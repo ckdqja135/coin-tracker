@@ -25,8 +25,11 @@ server.listen(PORT, async () => {
     await sequelize.authenticate();
     logger.info('Database connected');
 
-    const coinId = 'BTCUSDT';
+    // 여러 종목의 코인 ID 목록
+    const coinIds = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
 
-    // 주기적인 데이터 수집 시작
-    startDataCollection(coinId, io);
+    // 각 종목에 대해 주기적인 데이터 수집 시작
+    coinIds.forEach(coinId => {
+        startDataCollection(coinId, io);
+    });
 });
