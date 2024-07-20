@@ -743,3 +743,129 @@
 2024-07-18 23:45:17 info: Coin Data: {"id":1721313917603,"coin_id":"ETHUSDT","close":3442.78,"open":3460.44,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:45:17"}
 2024-07-18 23:45:17 info: Coin Data: {"id":1721313917605,"coin_id":"BTCUSDT","close":64006,"open":65162,"high":65400,"low":63854,"date":"2024. 7. 18. 오후 11:45:17"}
 2024-07-18 23:45:17 info: Coin Data: {"id":1721313917606,"coin_id":"BNBUSDT","close":570.3,"open":576.7,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:45:17"}
+2024-07-18 23:47:09 info: Server running on port 3000
+2024-07-18 23:47:09 info: Database connected
+2024-07-18 23:47:09 info: Coin Data: {"id":1721314029456,"coin_id":"ETHUSDT","close":3431.08,"open":3464.99,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:09"}
+2024-07-18 23:47:09 info: Coin Data: {"id":1721314029471,"coin_id":"BNBUSDT","close":568.8,"open":577.1,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:09"}
+2024-07-18 23:47:09 info: Coin Data: {"id":1721314029472,"coin_id":"BTCUSDT","close":63842,"open":65222.01,"high":65400,"low":63833,"date":"2024. 7. 18. 오후 11:47:09"}
+2024-07-18 23:47:19 info: Coin Data: {"id":1721314039446,"coin_id":"BTCUSDT","close":63849.65,"open":65225.99,"high":65400,"low":63833,"date":"2024. 7. 18. 오후 11:47:19"}
+2024-07-18 23:47:19 info: Coin Data: {"id":1721314039448,"coin_id":"ETHUSDT","close":3430.77,"open":3465.45,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:19"}
+2024-07-18 23:47:19 info: Coin Data: {"id":1721314039449,"coin_id":"BNBUSDT","close":568.5,"open":577.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:19"}
+2024-07-18 23:47:29 info: Coin Data: {"id":1721314049445,"coin_id":"ETHUSDT","close":3429.77,"open":3465.51,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:29"}
+2024-07-18 23:47:29 info: Coin Data: {"id":1721314049459,"coin_id":"BNBUSDT","close":568.4,"open":577.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:29"}
+2024-07-18 23:47:29 info: Coin Data: {"id":1721314049513,"coin_id":"BTCUSDT","close":63834.51,"open":65220.73,"high":65400,"low":63833,"date":"2024. 7. 18. 오후 11:47:29"}
+2024-07-18 23:47:39 info: Coin Data: {"id":1721314059453,"coin_id":"ETHUSDT","close":3429.8,"open":3464.41,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:39"}
+2024-07-18 23:47:39 info: Coin Data: {"id":1721314059512,"coin_id":"BTCUSDT","close":63797.99,"open":65201.89,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:47:39"}
+2024-07-18 23:47:39 info: Coin Data: {"id":1721314059515,"coin_id":"BNBUSDT","close":568.2,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:39"}
+2024-07-18 23:47:49 info: Coin Data: {"id":1721314069447,"coin_id":"BTCUSDT","close":63794.72,"open":65186.01,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:47:49"}
+2024-07-18 23:47:49 info: Coin Data: {"id":1721314069450,"coin_id":"BNBUSDT","close":568,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:49"}
+2024-07-18 23:47:49 info: Coin Data: {"id":1721314069452,"coin_id":"ETHUSDT","close":3428.93,"open":3463.43,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:49"}
+2024-07-18 23:47:59 info: Coin Data: {"id":1721314079442,"coin_id":"BTCUSDT","close":63784.01,"open":65186.01,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:47:59 info: Coin Data: {"id":1721314079449,"coin_id":"ETHUSDT","close":3428.49,"open":3463.56,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:47:59 info: Coin Data: {"id":1721314079455,"coin_id":"BNBUSDT","close":568,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:48:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:48:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:48:09 info: Saved data to DB for ETHUSDT: {"id":1721314079449,"coin_id":"ETHUSDT","close":3428.49,"open":3463.56,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:48:09 info: Saved data to DB for BNBUSDT: {"id":1721314079455,"coin_id":"BNBUSDT","close":568,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:48:09 info: Saved data to DB for BTCUSDT: {"id":1721314079442,"coin_id":"BTCUSDT","close":63784.01,"open":65186.01,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:47:59"}
+2024-07-18 23:48:09 info: Coin Data: {"id":1721314089448,"coin_id":"BTCUSDT","close":63768,"open":65177.99,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:48:09"}
+2024-07-18 23:48:09 info: Coin Data: {"id":1721314089453,"coin_id":"ETHUSDT","close":3426.69,"open":3463.58,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:09"}
+2024-07-18 23:48:09 info: Coin Data: {"id":1721314089454,"coin_id":"BNBUSDT","close":567.9,"open":576.6,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:09"}
+2024-07-18 23:48:19 info: Coin Data: {"id":1721314099445,"coin_id":"BTCUSDT","close":63806.01,"open":65150,"high":65400,"low":63763,"date":"2024. 7. 18. 오후 11:48:19"}
+2024-07-18 23:48:19 info: Coin Data: {"id":1721314099451,"coin_id":"ETHUSDT","close":3428.56,"open":3462.1,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:19"}
+2024-07-18 23:48:19 info: Coin Data: {"id":1721314099459,"coin_id":"BNBUSDT","close":568,"open":576.5,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:19"}
+2024-07-18 23:48:29 info: Coin Data: {"id":1721314109514,"coin_id":"ETHUSDT","close":3424.52,"open":3461.13,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:29"}
+2024-07-18 23:48:29 info: Coin Data: {"id":1721314109517,"coin_id":"BTCUSDT","close":63764,"open":65128.23,"high":65400,"low":63760,"date":"2024. 7. 18. 오후 11:48:29"}
+2024-07-18 23:48:29 info: Coin Data: {"id":1721314109518,"coin_id":"BNBUSDT","close":567.8,"open":576.4,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:29"}
+2024-07-18 23:48:39 info: Coin Data: {"id":1721314119445,"coin_id":"BTCUSDT","close":63760.01,"open":65106.85,"high":65400,"low":63760,"date":"2024. 7. 18. 오후 11:48:39"}
+2024-07-18 23:48:39 info: Coin Data: {"id":1721314119452,"coin_id":"ETHUSDT","close":3424.81,"open":3460.47,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:39"}
+2024-07-18 23:48:39 info: Coin Data: {"id":1721314119453,"coin_id":"BNBUSDT","close":567.6,"open":576.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:39"}
+2024-07-18 23:48:49 info: Coin Data: {"id":1721314129455,"coin_id":"BNBUSDT","close":567.5,"open":576.1,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:49"}
+2024-07-18 23:48:49 info: Coin Data: {"id":1721314129457,"coin_id":"BTCUSDT","close":63744,"open":65077.99,"high":65400,"low":63744,"date":"2024. 7. 18. 오후 11:48:49"}
+2024-07-18 23:48:49 info: Coin Data: {"id":1721314129457,"coin_id":"ETHUSDT","close":3424.09,"open":3459.54,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:49"}
+2024-07-18 23:48:59 info: Coin Data: {"id":1721314139452,"coin_id":"ETHUSDT","close":3423.52,"open":3460.31,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:48:59 info: Coin Data: {"id":1721314139456,"coin_id":"BTCUSDT","close":63742,"open":65103.99,"high":65400,"low":63735,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:48:59 info: Coin Data: {"id":1721314139457,"coin_id":"BNBUSDT","close":567.5,"open":576.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:49:09 info: Saved data to DB for ETHUSDT: {"id":1721314139452,"coin_id":"ETHUSDT","close":3423.52,"open":3460.31,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:49:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:49:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:49:09 info: Saved data to DB for BNBUSDT: {"id":1721314139457,"coin_id":"BNBUSDT","close":567.5,"open":576.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:49:09 info: Saved data to DB for BTCUSDT: {"id":1721314139456,"coin_id":"BTCUSDT","close":63742,"open":65103.99,"high":65400,"low":63735,"date":"2024. 7. 18. 오후 11:48:59"}
+2024-07-18 23:49:09 info: Coin Data: {"id":1721314149452,"coin_id":"ETHUSDT","close":3421,"open":3462.94,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:09"}
+2024-07-18 23:49:09 info: Coin Data: {"id":1721314149453,"coin_id":"BTCUSDT","close":63718.81,"open":65144.55,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:09"}
+2024-07-18 23:49:09 info: Coin Data: {"id":1721314149456,"coin_id":"BNBUSDT","close":567.3,"open":576.7,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:09"}
+2024-07-18 23:49:19 info: Coin Data: {"id":1721314159446,"coin_id":"BTCUSDT","close":63725.99,"open":65161.99,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:19"}
+2024-07-18 23:49:19 info: Coin Data: {"id":1721314159454,"coin_id":"ETHUSDT","close":3422.85,"open":3463.76,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:19"}
+2024-07-18 23:49:19 info: Coin Data: {"id":1721314159457,"coin_id":"BNBUSDT","close":567.5,"open":577,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:19"}
+2024-07-18 23:49:29 info: Coin Data: {"id":1721314169517,"coin_id":"BTCUSDT","close":63757.58,"open":65175.93,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:29"}
+2024-07-18 23:49:29 info: Coin Data: {"id":1721314169521,"coin_id":"ETHUSDT","close":3424.37,"open":3464.33,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:29"}
+2024-07-18 23:49:29 info: Coin Data: {"id":1721314169522,"coin_id":"BNBUSDT","close":567.8,"open":577.1,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:29"}
+2024-07-18 23:49:39 info: Coin Data: {"id":1721314179451,"coin_id":"BTCUSDT","close":63824.53,"open":65168,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:39"}
+2024-07-18 23:49:39 info: Coin Data: {"id":1721314179455,"coin_id":"BNBUSDT","close":568.5,"open":577.1,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:39"}
+2024-07-18 23:49:39 info: Coin Data: {"id":1721314179455,"coin_id":"ETHUSDT","close":3427.53,"open":3464.07,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:39"}
+2024-07-18 23:49:49 info: Coin Data: {"id":1721314189452,"coin_id":"BTCUSDT","close":63850,"open":65173.99,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:49"}
+2024-07-18 23:49:49 info: Coin Data: {"id":1721314189455,"coin_id":"ETHUSDT","close":3428.39,"open":3464.8,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:49"}
+2024-07-18 23:49:49 info: Coin Data: {"id":1721314189458,"coin_id":"BNBUSDT","close":568.6,"open":577,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:49"}
+2024-07-18 23:49:59 info: Coin Data: {"id":1721314199450,"coin_id":"BTCUSDT","close":63876.66,"open":65152.01,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:49:59 info: Coin Data: {"id":1721314199455,"coin_id":"ETHUSDT","close":3430,"open":3463.84,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:49:59 info: Coin Data: {"id":1721314199456,"coin_id":"BNBUSDT","close":569,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:50:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:50:09 error: Error saving coin data to DB: Validation error
+2024-07-18 23:50:09 info: Saved data to DB for ETHUSDT: {"id":1721314199455,"coin_id":"ETHUSDT","close":3430,"open":3463.84,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:50:09 info: Saved data to DB for BNBUSDT: {"id":1721314199456,"coin_id":"BNBUSDT","close":569,"open":576.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:50:09 info: Saved data to DB for BTCUSDT: {"id":1721314199450,"coin_id":"BTCUSDT","close":63876.66,"open":65152.01,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:49:59"}
+2024-07-18 23:50:09 info: Coin Data: {"id":1721314209451,"coin_id":"BTCUSDT","close":63864,"open":65108.92,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:50:09"}
+2024-07-18 23:50:09 info: Coin Data: {"id":1721314209452,"coin_id":"ETHUSDT","close":3430.32,"open":3461.53,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:50:09"}
+2024-07-18 23:50:09 info: Coin Data: {"id":1721314209459,"coin_id":"BNBUSDT","close":569,"open":576.5,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:50:09"}
+2024-07-18 23:50:19 info: Coin Data: {"id":1721314219452,"coin_id":"BTCUSDT","close":63917.99,"open":65111.84,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:50:19"}
+2024-07-18 23:50:19 info: Coin Data: {"id":1721314219454,"coin_id":"ETHUSDT","close":3431.31,"open":3461.79,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:50:19"}
+2024-07-18 23:50:19 info: Coin Data: {"id":1721314219455,"coin_id":"BNBUSDT","close":569.3,"open":576.5,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:50:19"}
+2024-07-18 23:50:29 info: Coin Data: {"id":1721314229449,"coin_id":"BTCUSDT","close":63914.01,"open":65144,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:50:29"}
+2024-07-18 23:50:29 info: Coin Data: {"id":1721314229534,"coin_id":"ETHUSDT","close":3431.48,"open":3462.98,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:50:29"}
+2024-07-18 23:50:29 info: Coin Data: {"id":1721314229535,"coin_id":"BNBUSDT","close":569.4,"open":576.8,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:50:29"}
+2024-07-18 23:50:39 info: Coin Data: {"id":1721314239452,"coin_id":"BTCUSDT","close":63895.99,"open":65107.01,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:50:39"}
+2024-07-18 23:50:39 info: Coin Data: {"id":1721314239456,"coin_id":"BNBUSDT","close":569.2,"open":576.5,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:50:39"}
+2024-07-18 23:50:39 info: Coin Data: {"id":1721314239458,"coin_id":"ETHUSDT","close":3430.64,"open":3461.86,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:50:39"}
+2024-07-18 23:50:49 info: Coin Data: {"id":1721314249459,"coin_id":"ETHUSDT","close":3430.98,"open":3459.98,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:50:49"}
+2024-07-18 23:50:49 info: Coin Data: {"id":1721314249460,"coin_id":"BTCUSDT","close":63904.92,"open":65064,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:50:49"}
+2024-07-18 23:50:49 info: Coin Data: {"id":1721314249462,"coin_id":"BNBUSDT","close":569.3,"open":576.2,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:50:49"}
+2024-07-18 23:52:27 info: Server running on port 3000
+2024-07-18 23:52:27 info: Database connected
+2024-07-18 23:52:27 info: Coin Data: {"id":1721314347320,"coin_id":"BTCUSDT","close":63942.68,"open":65027.94,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:52:27"}
+2024-07-18 23:52:27 info: Coin Data: {"id":1721314347362,"coin_id":"ETHUSDT","close":3433.09,"open":3456.84,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:52:27"}
+2024-07-18 23:52:27 info: Coin Data: {"id":1721314347363,"coin_id":"BNBUSDT","close":569.7,"open":575.9,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:52:27"}
+2024-07-18 23:52:37 info: Coin Data: {"id":1721314357325,"coin_id":"BTCUSDT","close":63939.44,"open":65048,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:52:37"}
+2024-07-18 23:52:37 info: Coin Data: {"id":1721314357326,"coin_id":"ETHUSDT","close":3433.09,"open":3457.2,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:52:37"}
+2024-07-18 23:52:37 info: Coin Data: {"id":1721314357385,"coin_id":"BNBUSDT","close":569.6,"open":576,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:52:37"}
+2024-07-18 23:52:47 info: Coin Data: {"id":1721314367324,"coin_id":"BTCUSDT","close":63931.77,"open":65065.98,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:52:47"}
+2024-07-18 23:52:47 info: Coin Data: {"id":1721314367327,"coin_id":"ETHUSDT","close":3432.6,"open":3458.08,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:52:47"}
+2024-07-18 23:52:47 info: Coin Data: {"id":1721314367328,"coin_id":"BNBUSDT","close":569.5,"open":576.2,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:52:47"}
+2024-07-18 23:52:57 info: Coin Data: {"id":1721314377333,"coin_id":"BTCUSDT","close":63908.91,"open":65050.79,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:52:57"}
+2024-07-18 23:52:57 info: Coin Data: {"id":1721314377334,"coin_id":"BNBUSDT","close":569.3,"open":576.2,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:52:57"}
+2024-07-18 23:52:57 info: Coin Data: {"id":1721314377337,"coin_id":"ETHUSDT","close":3431.81,"open":3456.77,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:52:57"}
+2024-07-18 23:53:07 info: Coin Data: {"id":1721314387346,"coin_id":"ETHUSDT","close":3432.05,"open":3457.46,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:07"}
+2024-07-18 23:53:07 info: Coin Data: {"id":1721314387347,"coin_id":"BNBUSDT","close":569.6,"open":576.3,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:07"}
+2024-07-18 23:53:07 info: Coin Data: {"id":1721314387348,"coin_id":"BTCUSDT","close":63949.26,"open":65071.99,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:07"}
+2024-07-18 23:53:17 info: Coin Data: {"id":1721314397361,"coin_id":"BNBUSDT","close":569.5,"open":576.2,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:17 info: Coin Data: {"id":1721314397362,"coin_id":"ETHUSDT","close":3430.61,"open":3456.78,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:17 info: Coin Data: {"id":1721314397363,"coin_id":"BTCUSDT","close":63938.01,"open":65060,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:27 error: Error saving coin data to DB: Validation error
+2024-07-18 23:53:27 error: Error saving coin data to DB: Validation error
+2024-07-18 23:53:27 info: Saved data to DB for BTCUSDT: {"id":1721314397363,"coin_id":"BTCUSDT","close":63938.01,"open":65060,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:27 info: Saved data to DB for ETHUSDT: {"id":1721314397362,"coin_id":"ETHUSDT","close":3430.61,"open":3456.78,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:27 info: Saved data to DB for BNBUSDT: {"id":1721314397361,"coin_id":"BNBUSDT","close":569.5,"open":576.2,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:17"}
+2024-07-18 23:53:27 info: Coin Data: {"id":1721314407377,"coin_id":"BTCUSDT","close":63941.48,"open":65025.37,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:27"}
+2024-07-18 23:53:27 info: Coin Data: {"id":1721314407378,"coin_id":"BNBUSDT","close":569.5,"open":575.8,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:27"}
+2024-07-18 23:53:27 info: Coin Data: {"id":1721314407379,"coin_id":"ETHUSDT","close":3430.97,"open":3455.26,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:27"}
+2024-07-18 23:53:37 info: Coin Data: {"id":1721314417384,"coin_id":"BNBUSDT","close":569.5,"open":575.6,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:37"}
+2024-07-18 23:53:37 info: Coin Data: {"id":1721314417386,"coin_id":"ETHUSDT","close":3431.59,"open":3452.75,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:37"}
+2024-07-18 23:53:37 info: Coin Data: {"id":1721314417386,"coin_id":"BTCUSDT","close":63949.26,"open":64953.6,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:37"}
+2024-07-18 23:53:47 info: Coin Data: {"id":1721314427388,"coin_id":"BNBUSDT","close":569.5,"open":575.4,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:47"}
+2024-07-18 23:53:47 info: Coin Data: {"id":1721314427392,"coin_id":"BTCUSDT","close":63949.25,"open":64920.01,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:47"}
+2024-07-18 23:53:47 info: Coin Data: {"id":1721314427394,"coin_id":"ETHUSDT","close":3431.13,"open":3450.99,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:47"}
+2024-07-18 23:53:57 info: Coin Data: {"id":1721314437402,"coin_id":"BTCUSDT","close":63949.24,"open":64953.6,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:53:57"}
+2024-07-18 23:53:57 info: Coin Data: {"id":1721314437404,"coin_id":"BNBUSDT","close":569.6,"open":575.5,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:53:57"}
+2024-07-18 23:53:57 info: Coin Data: {"id":1721314437407,"coin_id":"ETHUSDT","close":3431.25,"open":3452.55,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:53:57"}
+2024-07-18 23:54:07 info: Coin Data: {"id":1721314447410,"coin_id":"BTCUSDT","close":63968.84,"open":64990,"high":65400,"low":63701,"date":"2024. 7. 18. 오후 11:54:07"}
+2024-07-18 23:54:07 info: Coin Data: {"id":1721314447412,"coin_id":"ETHUSDT","close":3432.27,"open":3454.81,"high":3489.98,"low":3376,"date":"2024. 7. 18. 오후 11:54:07"}
+2024-07-18 23:54:07 info: Coin Data: {"id":1721314447413,"coin_id":"BNBUSDT","close":569.8,"open":575.8,"high":579.6,"low":564.3,"date":"2024. 7. 18. 오후 11:54:07"}

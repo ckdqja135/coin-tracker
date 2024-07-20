@@ -5,10 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="56c27b01-4e7b-4677-aadf-e61fe7f0a835" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/.6d8b763425040eacb72ed8ffeae7c0dc96961e5e-audit.json" beforeDir="false" afterPath="$PROJECT_DIR$/logs/.6d8b763425040eacb72ed8ffeae7c0dc96961e5e-audit.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/.a41492b6cef1b51021ddc64fa21572148445ce63-audit.json" beforeDir="false" afterPath="$PROJECT_DIR$/logs/.a41492b6cef1b51021ddc64fa21572148445ce63-audit.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/logs/backend_2024-07-18.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/backend_2024-07-18.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/backend_errors_2024-07-18.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/backend_errors_2024-07-18.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/coin.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/coin.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/coinService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/coinService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -35,44 +37,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/Project/Project/coin-tracker",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Modules",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2024.1.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Project/Project/coin-tracker&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\IntelliJ IDEA 2024.1.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\Project\Project\coin-tracker\log" />
     </key>
-  </component>
-  <component name="RunManager">
-    <configuration default="true" type="JetRunConfigurationType">
-      <module name="coin-tracker" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
-      <module name="coin-tracker" />
-      <option name="filePath" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -91,7 +78,10 @@
       <option name="presentableId" value="Default" />
       <updated>1721041436733</updated>
       <workItem from="1721041438482" duration="23000" />
-      <workItem from="1721309233105" duration="4635000" />
+      <workItem from="1721309233105" duration="5009000" />
+      <workItem from="1721436445216" duration="605000" />
+      <workItem from="1721441363152" duration="284000" />
+      <workItem from="1721484700820" duration="4479000" />
     </task>
     <servers />
   </component>

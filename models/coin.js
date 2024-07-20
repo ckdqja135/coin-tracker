@@ -1,43 +1,63 @@
-'use strict';
-const { Model } = require('sequelize');
-
 module.exports = (sequelize, DataTypes) => {
-    class Coin extends Model {
-        static associate(models) {
-            // define association here
-        }
-    };
-    Coin.init({
+    const Coin = sequelize.define('Coin', {
         id: {
-            type: DataTypes.BIGINT, // id를 bigint로 설정
+            type: DataTypes.BIGINT,
             primaryKey: true,
             allowNull: false
         },
         coin_id: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
         },
         close: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
         },
         open: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
         },
         high: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
         },
         low: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            validate: {
+                notEmpty: true
+            }
         }
     }, {
-        sequelize,
-        modelName: 'Coin',
         tableName: 'coin',
-        timestamps: true // createdAt과 updatedAt을 사용
+        timestamps: true
     });
+
     return Coin;
 };

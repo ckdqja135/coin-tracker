@@ -19,6 +19,8 @@ const fetchCoinData = async (coinId, io) => {
             open: parseFloat(data.openPrice),
             high: parseFloat(data.highPrice),
             low: parseFloat(data.lowPrice),
+            createdAt: new Date(timestamp), // createdAt 칼럼 추가
+            updatedAt: new Date(timestamp), // updatedAt 칼럼 추가
             date: new Date(timestamp).toLocaleString()
         };
 
@@ -55,19 +57,29 @@ const fetchCoinData = async (coinId, io) => {
 // 최신 코인 데이터를 데이터베이스에 저장하는 함수
 const saveCoinDataToDB = async () => {
     try {
-        // 버퍼에 저장된 최신 코인 데이터를 배열로 변환
+        logger.info("coinDataBuffer: ", JSON.stringify(coinDataBuffer));
+        // 해시맵에 저장된 최신 코인 데이터를 배열로 변환
         const latestCoinDataArray = Object.values(coinDataBuffer);
-        // 최신 코인 데이터 배열 latestCoinDataArray가 비어 있는지 확인.
+        logger.info(`latestCoinDataArray: ${JSON.stringify(latestCoinDataArray)}`);
+
+        // 최신 코인 데이터 배열 latestCoinDataArray가 비어 있는지 확인
         if (latestCoinDataArray.length > 0) {
             for (const latestCoinData of latestCoinDataArray) {
-                // 각 최신 코인 데이터를 데이터베이스에 저장
-                await Coin.create(latestCoinData);
-                // 저장된 데이터를 로그에 기록
-                logger.info(`Saved data to DB for ${latestCoinData.coin_id}: ${JSON.stringify(latestCoinData)}`);
+                // 각 최신 코인 데이터를 데이터베이스에 저장 (중복 검사 후 저장)
+                logger.info(`Attempting to save data: ${JSON.stringify(latestCoinData)}`);
+                await Coin.findOrCreate({
+                    where: { id: latestCoinData.id },
+                    defaults: latestCoinData
+                }).then(([coin, created]) => {
+                    if (created) {
+                        logger.info(`Saved data to DB for ${latestCoinData.coin_id}: ${JSON.stringify(latestCoinData)}`);
+                    } else {
+                        logger.info(`Data already exists for ${latestCoinData.coin_id} with id ${latestCoinData.id}`);
+                    }
+                });
             }
         }
     } catch (err) {
-        // 데이터베이스 저장 중 오류 발생 시 로그에 기록
         logger.error(`Error saving coin data to DB: ${err.message}`);
     }
 };
@@ -76,7 +88,7 @@ const saveCoinDataToDB = async () => {
 const startDataCollection = (coinId, io) => {
     // 코인 데이터를 10초마다 가져오는 함수 실행
     fetchCoinData(coinId, io);
-    setInterval(() => fetchCoinData(coinId, io), 10000); // 10초마다 데이터 갱신
+    setInterval(() => fetchCoinData(coinId, io), 1000); // 10초마다 데이터 갱신
 
     // 1분마다 데이터베이스에 저장
     setInterval(saveCoinDataToDB, 60000);
