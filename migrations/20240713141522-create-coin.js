@@ -4,13 +4,14 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('coin', {
       id: {
-        type: Sequelize.BIGINT, // id를 bigint로 설정
+        type: Sequelize.BIGINT,
         allowNull: false,
         primaryKey: true
       },
       coin_id: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
+        primaryKey: true
       },
       close: {
         type: Sequelize.DECIMAL(20, 10),
@@ -29,14 +30,12 @@ module.exports = {
         allowNull: false
       },
       createdAt: {
-        allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        allowNull: false
       },
       updatedAt: {
-        allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        allowNull: false
       }
     });
   },

@@ -2,57 +2,37 @@ module.exports = (sequelize, DataTypes) => {
     const Coin = sequelize.define('Coin', {
         id: {
             type: DataTypes.BIGINT,
-            primaryKey: true,
-            allowNull: false
+            allowNull: false,
+            primaryKey: true
         },
         coin_id: {
             type: DataTypes.STRING,
             allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            primaryKey: true
         },
         close: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         },
         open: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         },
         high: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         },
         low: {
             type: DataTypes.DECIMAL(20, 10),
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         },
         createdAt: {
             type: DataTypes.DATE,
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         },
         updatedAt: {
             type: DataTypes.DATE,
-            allowNull: false,
-            validate: {
-                notEmpty: true
-            }
+            allowNull: false
         }
     }, {
         tableName: 'coin',

@@ -11,7 +11,7 @@ const fetchCoinData = async (coinId, io) => {
         // Binance API에서 24시간 코인 데이터를 가져옴
         const response = await axios.get(`https://api.binance.com/api/v3/ticker/24hr?symbol=${coinId}`);
         const data = response.data;
-        const timestamp = Date.now(); // 밀리초 단위로 timestamp 설정
+        const timestamp = Math.floor(Date.now() / 60000) * 60000;
         const coinData = {
             id: timestamp, // id를 timestamp 밀리초 값으로 설정
             coin_id: coinId,
@@ -57,27 +57,20 @@ const fetchCoinData = async (coinId, io) => {
 // 최신 코인 데이터를 데이터베이스에 저장하는 함수
 const saveCoinDataToDB = async () => {
     try {
-        logger.info("coinDataBuffer: ", JSON.stringify(coinDataBuffer));
         // 해시맵에 저장된 최신 코인 데이터를 배열로 변환
         const latestCoinDataArray = Object.values(coinDataBuffer);
         logger.info(`latestCoinDataArray: ${JSON.stringify(latestCoinDataArray)}`);
-
-        // 최신 코인 데이터 배열 latestCoinDataArray가 비어 있는지 확인
+      // 최신 코인 데이터 배열 latestCoinDataArray가 비어 있는지 확인
         if (latestCoinDataArray.length > 0) {
-            for (const latestCoinData of latestCoinDataArray) {
-                // 각 최신 코인 데이터를 데이터베이스에 저장 (중복 검사 후 저장)
-                logger.info(`Attempting to save data: ${JSON.stringify(latestCoinData)}`);
-                await Coin.findOrCreate({
-                    where: { id: latestCoinData.id },
-                    defaults: latestCoinData
-                }).then(([coin, created]) => {
-                    if (created) {
-                        logger.info(`Saved data to DB for ${latestCoinData.coin_id}: ${JSON.stringify(latestCoinData)}`);
-                    } else {
-                        logger.info(`Data already exists for ${latestCoinData.coin_id} with id ${latestCoinData.id}`);
-                    }
-                });
-            }
+            // 데이터베이스에 저장 (중복 검사 후 저장)
+            await Coin.bulkCreate(latestCoinDataArray, {
+                updateOnDuplicate: ['id', 'coin_id', 'close', 'open', 'high', 'low', 'createdAt', 'updatedAt']
+            });
+
+            // 모든 레코드가 삽입된 후 로그를 기록
+            latestCoinDataArray.forEach(coinData => {
+                logger.info(`Saved data to DB for ${coinData.coin_id}: ${JSON.stringify(coinData)}`);
+            });
         }
     } catch (err) {
         logger.error(`Error saving coin data to DB: ${err.message}`);
@@ -88,7 +81,7 @@ const saveCoinDataToDB = async () => {
 const startDataCollection = (coinId, io) => {
     // 코인 데이터를 10초마다 가져오는 함수 실행
     fetchCoinData(coinId, io);
-    setInterval(() => fetchCoinData(coinId, io), 1000); // 10초마다 데이터 갱신
+    setInterval(() => fetchCoinData(coinId, io),1000);
 
     // 1분마다 데이터베이스에 저장
     setInterval(saveCoinDataToDB, 60000);
