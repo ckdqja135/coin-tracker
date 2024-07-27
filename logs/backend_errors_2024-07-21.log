@@ -542,3 +542,5 @@
 2024-07-21 19:00:46 error: Error fetching coin data for BNBUSDT: read ECONNRESET
 2024-07-21 19:00:46 error: Error fetching coin data for BTCUSDT: getaddrinfo ENOTFOUND api.binance.com
 2024-07-21 19:00:46 error: Error fetching coin data for ETHUSDT: getaddrinfo ENOTFOUND api.binance.com
+2024-07-21 19:28:40 error: Error fetching coin data for BTCUSDT: getaddrinfo ENOTFOUND api.binance.com
+2024-07-21 19:28:40 error: Error fetching coin data for ETHUSDT: getaddrinfo ENOTFOUND api.binance.com

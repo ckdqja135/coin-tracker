@@ -34,7 +34,9 @@ const fetchCoinData = async (coinId, io) => {
             date: new Date(timestamp).toLocaleString()
         };
 
-        logger.info(`coinId, ${coinId}`);
+        // logger.info(`coinId, ${coinId}`);
+        // logger.info(`Fetched coin data: ${JSON.stringify(coinData)}`); // 추가 로그
+
 
         // 최신 데이터를 해시맵에 저장
         coinDataBuffer[coinId] = coinData;
@@ -56,12 +58,6 @@ const fetchCoinData = async (coinId, io) => {
         // 콘솔을 지우고 표 형식으로 출력
         console.clear();
         console.table(allCoinData);
-
-        // 소켓을 통해 데이터 전송
-        if (io) {
-            logger.info("coinData ", coinData)
-            io.emit('coinData', coinData);
-        }
 
         return coinData;
     } catch (err) {
