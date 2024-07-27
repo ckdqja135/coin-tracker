@@ -61,9 +61,14 @@ const fetchCoinData = async (coinId, io) => {
 
         return coinData;
     } catch (err) {
-        // 오류 발생 시 로그에 기록
-        logger.error(`Error fetching coin data for ${coinId}: ${err.message}`);
-        throw err;
+        // 오류 발생 시 재시도 로직 추가
+        if (err.response && err.response.status === 418) {
+            logger.error(`Request failed with status code 418 for ${coinId}. Retrying in 60 seconds...`);
+            setTimeout(() => fetchCoinData(coinId), 60000); // 60초 후 재시도
+        } else {
+            logger.error(`Error fetching coin data for ${coinId}: ${err.message}`);
+            throw err;
+        }
     }
 };
 

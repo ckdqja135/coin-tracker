@@ -11,18 +11,29 @@ const coinSocket = (io) => {
         });
 
         // 클라이언트가 특정 코인에 구독(subscribe)하는 이벤트 처리
-        socket.on('message', async (message) => {
-            try {
-                const { event, data } = JSON.parse(message);
-                if (event === 'subscribeToCoin') {
-                    logger.info(`Client subscribed to ${data}`);
-                    const coinData = await fetchCoinData(data, io);
-                    logger.info("coinData222 ", coinData);
-                    socket.emit('coinData', coinData);
+        socket.on('subscribeToCoin', (coinId) => {
+            logger.info(`Client subscribed to ${coinId}`);
+
+            const fetchDataAndEmit = async () => {
+                try {
+                    const coinData = await fetchCoinData(coinId);
+                    socket.emit('coinData', coinData); // 구독한 클라이언트에게만 데이터 전송
+                } catch (err) {
+                    logger.error(`Error fetching coin data for ${coinId}: ${err.message}`);
                 }
-            } catch (err) {
-                logger.error(`Error in socket message handler: ${err.message}`);
-            }
+            };
+
+            // 처음 데이터를 가져오고 전송
+            fetchDataAndEmit();
+
+            // 주기적으로 데이터를 가져오고 전송
+            const intervalId = setInterval(fetchDataAndEmit, 1000); // 1초마다 데이터 가져오기
+
+            // 클라이언트가 연결 해제 시 interval을 정리
+            socket.on('disconnect', () => {
+                clearInterval(intervalId);
+                logger.info('user disconnected and interval cleared');
+            });
         });
     });
 };
