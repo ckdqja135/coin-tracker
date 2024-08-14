@@ -5,7 +5,7 @@ socket.on('connect', () => {
     console.log('Connected to server');
 
     // 구독 메시지 전송
-    socket.emit('subscribeToCoin', 'BTCUSDT');
+    socket.join('subscribeToCoin', 'BTCUSDT');
     console.log('Sent subscribeToCoin event for BTCUSDT');
 });
 
