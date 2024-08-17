@@ -1,0 +1,81 @@
+2024-08-17 21:07:14 error: Error connecting to the database Unknown database 'coin_tracker'
+2024-08-17 21:08:19 info: Database connected
+2024-08-17 21:08:19 info: Server running on port 3000
+2024-08-17 21:08:25 info: Database connected
+2024-08-17 21:08:25 info: Server running on port 3000
+2024-08-17 21:08:35 info: Emitting coinData through socket.io
+2024-08-17 21:08:35 info: Emitting coinData through socket.io
+2024-08-17 21:08:35 info: Emitting coinData through socket.io
+2024-08-17 21:08:45 info: Emitting coinData through socket.io
+2024-08-17 21:08:45 info: Emitting coinData through socket.io
+2024-08-17 21:08:45 info: Emitting coinData through socket.io
+2024-08-17 21:08:55 info: Emitting coinData through socket.io
+2024-08-17 21:08:55 info: Emitting coinData through socket.io
+2024-08-17 21:08:55 info: Emitting coinData through socket.io
+2024-08-17 21:09:05 info: Emitting coinData through socket.io
+2024-08-17 21:09:05 info: Emitting coinData through socket.io
+2024-08-17 21:09:05 info: Emitting coinData through socket.io
+2024-08-17 21:09:15 info: a user connected
+2024-08-17 21:09:15 info: Client subscribed to BTCUSDT
+2024-08-17 21:09:15 info: Emitting coinData through socket.io
+2024-08-17 21:09:15 info: Emitting coinData through socket.io
+2024-08-17 21:09:15 info: Emitting coinData through socket.io
+2024-08-17 21:09:25 info: latestCoinDataArray: [{"id":1723896540000,"coin_id":"BNBUSDT","close":529.9,"open":520.1,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:09:15.802Z","updatedAt":"2024-08-17T12:09:15.802Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"ETHUSDT","close":2597.02,"open":2615.33,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:09:15.893Z","updatedAt":"2024-08-17T12:09:15.893Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"BTCUSDT","close":59100.28,"open":58476.78,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:09:25.578Z","updatedAt":"2024-08-17T12:09:25.578Z","date":"2024. 8. 17. 오후 9:09:25"}]
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:09:25 info: latestCoinDataArray: [{"id":1723896540000,"coin_id":"BNBUSDT","close":529.9,"open":520.1,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:09:15.802Z","updatedAt":"2024-08-17T12:09:15.802Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"ETHUSDT","close":2597.02,"open":2615.33,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:09:15.893Z","updatedAt":"2024-08-17T12:09:15.893Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"BTCUSDT","close":59100.28,"open":58476.78,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:09:25.578Z","updatedAt":"2024-08-17T12:09:25.578Z","date":"2024. 8. 17. 오후 9:09:25"}]
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:09:25 info: latestCoinDataArray: [{"id":1723896540000,"coin_id":"BNBUSDT","close":529.9,"open":520.1,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:09:15.802Z","updatedAt":"2024-08-17T12:09:15.802Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"ETHUSDT","close":2597.02,"open":2615.33,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:09:15.893Z","updatedAt":"2024-08-17T12:09:15.893Z","date":"2024. 8. 17. 오후 9:09:15"},{"id":1723896540000,"coin_id":"BTCUSDT","close":59100.28,"open":58476.78,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:09:25.578Z","updatedAt":"2024-08-17T12:09:25.578Z","date":"2024. 8. 17. 오후 9:09:25"}]
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:09:25 info: Emitting coinData through socket.io
+2024-08-17 21:09:25 info: Emitting coinData through socket.io
+2024-08-17 21:09:25 info: Emitting coinData through socket.io
+2024-08-17 21:09:35 info: Emitting coinData through socket.io
+2024-08-17 21:09:35 info: Emitting coinData through socket.io
+2024-08-17 21:09:35 info: Emitting coinData through socket.io
+2024-08-17 21:09:45 info: Emitting coinData through socket.io
+2024-08-17 21:09:45 info: Emitting coinData through socket.io
+2024-08-17 21:09:45 info: Emitting coinData through socket.io
+2024-08-17 21:09:55 info: Emitting coinData through socket.io
+2024-08-17 21:09:55 info: Emitting coinData through socket.io
+2024-08-17 21:09:55 info: Emitting coinData through socket.io
+2024-08-17 21:10:05 info: Emitting coinData through socket.io
+2024-08-17 21:10:05 info: Emitting coinData through socket.io
+2024-08-17 21:10:05 info: Emitting coinData through socket.io
+2024-08-17 21:10:15 info: Emitting coinData through socket.io
+2024-08-17 21:10:15 info: Emitting coinData through socket.io
+2024-08-17 21:10:15 info: Emitting coinData through socket.io
+2024-08-17 21:10:25 info: latestCoinDataArray: [{"id":1723896600000,"coin_id":"BNBUSDT","close":530.7,"open":519.3,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:10:15.867Z","updatedAt":"2024-08-17T12:10:15.867Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"ETHUSDT","close":2597.73,"open":2611.95,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:10:15.830Z","updatedAt":"2024-08-17T12:10:15.830Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"BTCUSDT","close":59116.36,"open":58412,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:10:25.107Z","updatedAt":"2024-08-17T12:10:25.107Z","date":"2024. 8. 17. 오후 9:10:25"}]
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 info: latestCoinDataArray: [{"id":1723896600000,"coin_id":"BNBUSDT","close":530.7,"open":519.3,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:10:15.867Z","updatedAt":"2024-08-17T12:10:15.867Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"ETHUSDT","close":2597.73,"open":2611.95,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:10:15.830Z","updatedAt":"2024-08-17T12:10:15.830Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"BTCUSDT","close":59116.36,"open":58412,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:10:25.107Z","updatedAt":"2024-08-17T12:10:25.107Z","date":"2024. 8. 17. 오후 9:10:25"}]
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 info: latestCoinDataArray: [{"id":1723896600000,"coin_id":"BNBUSDT","close":530.7,"open":519.3,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:10:15.867Z","updatedAt":"2024-08-17T12:10:15.867Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"ETHUSDT","close":2597.73,"open":2611.95,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:10:15.830Z","updatedAt":"2024-08-17T12:10:15.830Z","date":"2024. 8. 17. 오후 9:10:15"},{"id":1723896600000,"coin_id":"BTCUSDT","close":59116.36,"open":58412,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:10:25.107Z","updatedAt":"2024-08-17T12:10:25.107Z","date":"2024. 8. 17. 오후 9:10:25"}]
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 info: Emitting coinData through socket.io
+2024-08-17 21:10:25 info: Emitting coinData through socket.io
+2024-08-17 21:10:25 info: Emitting coinData through socket.io
+2024-08-17 21:10:35 info: Emitting coinData through socket.io
+2024-08-17 21:10:35 info: Emitting coinData through socket.io
+2024-08-17 21:10:35 info: Emitting coinData through socket.io
+2024-08-17 21:10:45 info: Emitting coinData through socket.io
+2024-08-17 21:10:45 info: Emitting coinData through socket.io
+2024-08-17 21:10:45 info: Emitting coinData through socket.io
+2024-08-17 21:10:55 info: Emitting coinData through socket.io
+2024-08-17 21:10:55 info: Emitting coinData through socket.io
+2024-08-17 21:10:55 info: Emitting coinData through socket.io
+2024-08-17 21:11:05 info: Emitting coinData through socket.io
+2024-08-17 21:11:05 info: Emitting coinData through socket.io
+2024-08-17 21:11:05 info: Emitting coinData through socket.io
+2024-08-17 21:11:15 info: Emitting coinData through socket.io
+2024-08-17 21:11:15 info: Emitting coinData through socket.io
+2024-08-17 21:11:15 info: Emitting coinData through socket.io
+2024-08-17 21:11:25 info: latestCoinDataArray: [{"id":1723896660000,"coin_id":"BNBUSDT","close":530.5,"open":518.5,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:11:15.892Z","updatedAt":"2024-08-17T12:11:15.892Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"ETHUSDT","close":2599.07,"open":2608.1,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:11:15.899Z","updatedAt":"2024-08-17T12:11:15.899Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"BTCUSDT","close":59141.84,"open":58353.29,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:11:25.665Z","updatedAt":"2024-08-17T12:11:25.665Z","date":"2024. 8. 17. 오후 9:11:25"}]
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 info: latestCoinDataArray: [{"id":1723896660000,"coin_id":"BNBUSDT","close":530.5,"open":518.5,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:11:15.892Z","updatedAt":"2024-08-17T12:11:15.892Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"ETHUSDT","close":2599.07,"open":2608.1,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:11:15.899Z","updatedAt":"2024-08-17T12:11:15.899Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"BTCUSDT","close":59141.84,"open":58353.29,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:11:25.665Z","updatedAt":"2024-08-17T12:11:25.665Z","date":"2024. 8. 17. 오후 9:11:25"}]
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 info: latestCoinDataArray: [{"id":1723896660000,"coin_id":"BNBUSDT","close":530.5,"open":518.5,"high":531.1,"low":509.9,"createdAt":"2024-08-17T12:11:15.892Z","updatedAt":"2024-08-17T12:11:15.892Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"ETHUSDT","close":2599.07,"open":2608.1,"high":2630.97,"low":2550.04,"createdAt":"2024-08-17T12:11:15.899Z","updatedAt":"2024-08-17T12:11:15.899Z","date":"2024. 8. 17. 오후 9:11:15"},{"id":1723896660000,"coin_id":"BTCUSDT","close":59141.84,"open":58353.29,"high":59817.76,"low":57526.31,"createdAt":"2024-08-17T12:11:25.665Z","updatedAt":"2024-08-17T12:11:25.665Z","date":"2024. 8. 17. 오후 9:11:25"}]
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 info: Emitting coinData through socket.io
+2024-08-17 21:11:25 info: Emitting coinData through socket.io
+2024-08-17 21:11:25 info: Emitting coinData through socket.io
+2024-08-17 21:11:31 info: user disconnected
+2024-08-17 21:11:31 info: user disconnected and interval cleared

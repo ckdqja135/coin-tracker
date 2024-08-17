@@ -1,0 +1,10 @@
+2024-08-17 21:07:14 error: Error connecting to the database Unknown database 'coin_tracker'
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:09:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:10:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
+2024-08-17 21:11:25 error: Error saving coin data to DB: AppDataSource is not defined
