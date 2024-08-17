@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AppDataSource } from '../config/data-source';
 import { Coin } from '../models/Coin';
 import logger from '../log/logger';
 
