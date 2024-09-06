@@ -24,7 +24,7 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
         const data = response.data;
         const timestamp = Date.now();
         const coinData = {
-            id: Math.floor(timestamp / 60000) * 60000,
+            id: Math.floor(timestamp / 1000) * 1000, // 초 단위로 잘라서 설정
             coin_id: coinId,
             close: parseFloat(data.lastPrice),
             open: parseFloat(data.openPrice),
@@ -97,7 +97,7 @@ export const startDataCollection = (coinId: string, io?: any): void => {
         } catch (err: any) {
             logger.error(`Error in startDataCollection: ${err.message}`);
         }
-    }, 10000); // 10초마다 데이터 갱신
+    }, 1000); // 1초마다 데이터 갱신
 
     setInterval(saveCoinDataToDB, 60000); // 1분마다 데이터베이스에 저장
 };
