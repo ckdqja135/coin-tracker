@@ -3,26 +3,26 @@ import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } fro
 @Entity({ name: 'coin' })
 export class Coin {
     @PrimaryColumn({ type: 'bigint' })
-    id: number;
+    id!: number;
 
     @PrimaryColumn({ type: 'varchar', length: 255 })
-    coin_id: string;
+    coin_id!: string;
 
     @Column({ type: 'decimal', precision: 20, scale: 10 })
-    close: number;
+    close!: number;
 
     @Column({ type: 'decimal', precision: 20, scale: 10 })
-    open: number;
+    open!: number;
 
     @Column({ type: 'decimal', precision: 20, scale: 10 })
-    high: number;
+    high!: number;
 
     @Column({ type: 'decimal', precision: 20, scale: 10 })
-    low: number;
+    low!: number;
 
     @CreateDateColumn({ type: 'timestamp' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @UpdateDateColumn({ type: 'timestamp' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

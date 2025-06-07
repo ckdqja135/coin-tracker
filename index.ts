@@ -34,7 +34,7 @@ AppDataSource.initialize().then(async () => {
                 startDataCollection(coinId, io);
             });
         } catch (err) {
-            logger.error(`Error fetching coin symbols: ${err.message}`);
+            logger.error(`Error fetching coin symbols: ${err instanceof Error ? err.message : String(err)}`);
         }
     });
 }).catch(error => logger.error('Error connecting to the database', error));

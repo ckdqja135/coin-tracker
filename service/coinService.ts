@@ -22,9 +22,13 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
     try {
         const response = await axios.get(`https://api.binance.com/api/v3/ticker/24hr?symbol=${coinId}`);
         const data = response.data;
-        const timestamp = Date.now();
+        
+        // API에서 제공하는 closeTime을 사용하거나, 현재 시간을 ms 단위로 사용
+        const apiCloseTime = parseInt(data.closeTime) || Date.now();
+        const timestamp = Date.now(); // 현재 시간을 기준으로 사용
+        
         const coinData = {
-            id: Math.floor(timestamp / 60000) * 60000,
+            id: timestamp, // ms 단위 그대로 사용 (더 정밀함)
             coin_id: coinId,
             close: parseFloat(data.lastPrice),
             open: parseFloat(data.openPrice),
@@ -32,7 +36,8 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
             low: parseFloat(data.lowPrice),
             createdAt: new Date(timestamp),
             updatedAt: new Date(timestamp),
-            date: new Date(timestamp).toLocaleString()
+            date: new Date(timestamp).toLocaleString(),
+            apiCloseTime: apiCloseTime // API에서 제공하는 실제 마감 시간
         };
 
         // 최신 데이터를 해시맵에 저장
@@ -46,7 +51,8 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
             Open: data.open,
             High: data.high,
             Low: data.low,
-            Date: data.date
+            Date: data.date,
+            APICloseTime: new Date(data.apiCloseTime).toLocaleString()
         }));
 
         console.clear();
