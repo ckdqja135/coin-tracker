@@ -3,6 +3,8 @@ import { AppDataSource } from '../config/data-source';
 import { Coin } from '../models/Coin';
 import logger from '../log/logger';
 
+type TimeFrame = '1m' | '5m' | '1h' | '1d';
+
 // 해시맵을 전역 변수로 설정
 const coinDataBuffer: { [key: string]: any } = {};
 
@@ -122,3 +124,38 @@ export const getCoinDataFromDB = async (coinId: string): Promise<Coin[]> => {
         throw new Error(`Error fetching coin data from DB: ${err.message}`);
     }
 };
+
+const generateMockData = (timeFrame: TimeFrame) => {
+  let interval = 60000; // 1분
+  let count = 20;
+  if (timeFrame === '5m') { interval = 5 * 60000; count = 20; }
+  if (timeFrame === '1h') { interval = 60 * 60000; count = 24; }
+  if (timeFrame === '1d') { interval = 24 * 60 * 60000; count = 30; }
+  return Array.from({ length: count }, (_, i) => {
+    const date = new Date(Date.now() - (count - i) * interval);
+    return {
+      timestamp: timeFrame === '1d'
+        ? date.toISOString().slice(0, 10) // YYYY-MM-DD
+        : date.toISOString(),             // ISO string for other frames
+      price: Math.random() * 1000 + 20000,
+    };
+  });
+};
+
+function getTickFormatter(timeFrame: TimeFrame) {
+  return (tick: string) => {
+    if (timeFrame === '1d') {
+      // YYYY-MM-DD만 추출
+      if (/\\d{4}-\\d{2}-\\d{2}/.test(tick)) return tick;
+      const date = new Date(tick);
+      if (!isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+      return tick;
+    }
+    // 1m, 5m, 1h: 시:분
+    const date = new Date(tick);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return tick;
+  };
+}

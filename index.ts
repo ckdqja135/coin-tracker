@@ -7,6 +7,8 @@ import coinRoutes from './route/coinRoutes';
 import { coinSocket } from './socket/coinSocket';
 import logger from './log/logger';
 import { fetchAllCoinSymbols, startDataCollection } from './service/coinService';
+import historyRoutes from './route/historyRoutes';
+import { registerAggregateTimers } from './service/aggregateService';
 
 const app = express();
 const server = http.createServer(app);
@@ -16,14 +18,20 @@ const io = new SocketIOServer(server);
 app.use(express.json());
 // REST API 라우터 설정
 app.use('/api/coins', coinRoutes);
+app.use('/api', historyRoutes);
 
 // 소켓 연결 설정
 coinSocket(io);
 
 // 서버 시작 및 주기적 데이터 갱신
 const PORT = process.env.PORT || 3000;
+const serverStartTime = new Date();
+
 AppDataSource.initialize().then(async () => {
     logger.info('Database connected');
+
+    // 집계 타이머 등록
+    registerAggregateTimers(serverStartTime);
 
     server.listen(PORT, () => {
         logger.info(`Server running on port ${PORT}`);
