@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { AppDataSource } from '../config/data-source';
-import { Coin } from '../models/Coin';
+import { Coin } from '../models/coin';
 import logger from '../log/logger';
 
 type TimeFrame = '1m' | '5m' | '1h' | '1d';

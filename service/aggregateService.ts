@@ -1,5 +1,5 @@
 import { AppDataSource } from '../config/data-source';
-import { Coin } from '../models/Coin';
+import { Coin } from '../models/coin';
 import { tb_5min } from '../models/tb_5min';
 import { tb_hour } from '../models/tb_hour';
 import { tb_day } from '../models/tb_day';
