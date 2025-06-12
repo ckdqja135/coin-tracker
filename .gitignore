@@ -6,3 +6,5 @@ logs/
 
 # Environment variables file
 .env
+
+config/

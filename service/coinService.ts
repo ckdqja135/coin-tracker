@@ -3,8 +3,6 @@ import { AppDataSource } from '../config/data-source';
 import { Coin } from '../models/coin';
 import logger from '../log/logger';
 
-type TimeFrame = '1m' | '5m' | '1h' | '1d';
-
 // 해시맵을 전역 변수로 설정
 const coinDataBuffer: { [key: string]: any } = {};
 
@@ -57,12 +55,11 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
             APICloseTime: new Date(data.apiCloseTime).toLocaleString()
         }));
 
-        console.clear();
-        console.table(allCoinData);
+        // console.clear();
+        // console.table(allCoinData);
 
         // 소켓을 통해 데이터 전송
         if (io) {
-            logger.info("Emitting coinData through socket.io");
             io.emit('coinData', coinData);
         }
 
@@ -82,15 +79,12 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
 export const saveCoinDataToDB = async (): Promise<void> => {
     try {
         const latestCoinDataArray = Object.values(coinDataBuffer);
-        logger.info(`latestCoinDataArray: ${JSON.stringify(latestCoinDataArray)}`);
 
         if (latestCoinDataArray.length > 0) {
             const coinRepository = AppDataSource.getRepository(Coin);
             await coinRepository.save(latestCoinDataArray, { chunk: 100 });
 
-            latestCoinDataArray.forEach((coinData: any) => {
-                logger.info(`Saved data to DB for ${coinData.coin_id}: ${JSON.stringify(coinData)}`);
-            });
+            logger.info(`DB 저장 완료: ${latestCoinDataArray.length}개 코인 데이터`);
         }
     } catch (err: any) {
         logger.error(`Error saving coin data to DB: ${err.message}`);
@@ -124,38 +118,3 @@ export const getCoinDataFromDB = async (coinId: string): Promise<Coin[]> => {
         throw new Error(`Error fetching coin data from DB: ${err.message}`);
     }
 };
-
-const generateMockData = (timeFrame: TimeFrame) => {
-  let interval = 60000; // 1분
-  let count = 20;
-  if (timeFrame === '5m') { interval = 5 * 60000; count = 20; }
-  if (timeFrame === '1h') { interval = 60 * 60000; count = 24; }
-  if (timeFrame === '1d') { interval = 24 * 60 * 60000; count = 30; }
-  return Array.from({ length: count }, (_, i) => {
-    const date = new Date(Date.now() - (count - i) * interval);
-    return {
-      timestamp: timeFrame === '1d'
-        ? date.toISOString().slice(0, 10) // YYYY-MM-DD
-        : date.toISOString(),             // ISO string for other frames
-      price: Math.random() * 1000 + 20000,
-    };
-  });
-};
-
-function getTickFormatter(timeFrame: TimeFrame) {
-  return (tick: string) => {
-    if (timeFrame === '1d') {
-      // YYYY-MM-DD만 추출
-      if (/\\d{4}-\\d{2}-\\d{2}/.test(tick)) return tick;
-      const date = new Date(tick);
-      if (!isNaN(date.getTime())) return date.toISOString().slice(0, 10);
-      return tick;
-    }
-    // 1m, 5m, 1h: 시:분
-    const date = new Date(tick);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    return tick;
-  };
-}
