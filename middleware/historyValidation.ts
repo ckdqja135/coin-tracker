@@ -1,147 +1,184 @@
 import { Request, Response, NextFunction } from 'express';
-import { HistoryService } from '../service/historyService';
+import { isValidTimeFrame } from '../service/coinService';
+
+// Request 타입 확장
+declare global {
+	namespace Express {
+		interface Request {
+			validatedQuery?: {
+				symbol: string;
+				timeFrame: string;
+				limit?: number;
+				startDate?: Date;
+				endDate?: Date;
+			};
+		}
+	}
+}
 
 /**
- * 기본 히스토리 조회 유효성 검증 미들웨어
+ * 기본 히스토리 쿼리 검증 미들웨어
  */
 export const validateHistoryQuery = (req: Request, res: Response, next: NextFunction) => {
-  const symbol = String(req.query.symbol);
-  const timeFrame = (req.query.timeFrame as string) || '1m';
-  const limit = parseInt(req.query.limit as string) || 100;
+	const { symbol, timeFrame, limit } = req.query;
 
-  // 필수 파라미터 검증
-  if (!symbol) {
-    return res.status(400).json({ 
-      error: 'symbol is required',
-      example: '/api/history?symbol=BTCUSDT&timeFrame=1m&limit=100'
-    });
-  }
+	// 필수 파라미터 검증
+	if (!symbol || typeof symbol !== 'string') {
+		return res.status(400).json({ 
+		error: 'symbol parameter is required and must be a string' 
+		});
+	}
 
-  // 시간 프레임 유효성 검증
-  if (!HistoryService.isValidTimeFrame(timeFrame)) {
-    return res.status(400).json({ 
-      error: `Invalid timeFrame. Supported timeFrames: ${HistoryService.getSupportedTimeFrames().join(', ')}`,
-      provided: timeFrame
-    });
-  }
+	if (!timeFrame || typeof timeFrame !== 'string') {
+		return res.status(400).json({ 
+		error: 'timeFrame parameter is required and must be a string' 
+		});
+	}
 
-  // limit 범위 검증
-  if (limit < 1 || limit > 1000) {
-    return res.status(400).json({ 
-      error: 'limit must be between 1 and 1000',
-      provided: limit
-    });
-  }
+	// timeFrame 유효성 검증
+	if (!isValidTimeFrame(timeFrame)) {
+		return res.status(400).json({ 
+		error: 'Invalid timeFrame. Supported values: 1m, 5m, 1h, 1d, 1M' 
+		});
+	}
 
-  // 검증된 값들을 req에 저장
-  req.validatedQuery = {
-    symbol,
-    timeFrame,
-    limit
-  };
+	// limit 검증 (선택적)
+	let parsedLimit = 100; // 기본값
+	if (limit) {
+		if (typeof limit !== 'string' || isNaN(Number(limit))) {
+			return res.status(400).json({ 
+			error: 'limit parameter must be a valid number' 
+			});
+		}
+		parsedLimit = parseInt(limit, 10);
+		if (parsedLimit <= 0 || parsedLimit > 1000) {
+			return res.status(400).json({ 
+			error: 'limit must be between 1 and 1000' 
+			});
+		}
+	}
 
-  next();
+	// 검증된 쿼리를 req에 저장
+	req.validatedQuery = {
+		symbol: symbol.toUpperCase(),
+		timeFrame,
+		limit: parsedLimit
+	};
+
+	next();
 };
 
 /**
- * 날짜 범위 조회 유효성 검증 미들웨어
+ * 날짜 범위 쿼리 검증 미들웨어
  */
 export const validateDateRangeQuery = (req: Request, res: Response, next: NextFunction) => {
-  const symbol = String(req.query.symbol);
-  const timeFrame = (req.query.timeFrame as string) || '1m';
-  const startDateStr = req.query.startDate as string;
-  const endDateStr = req.query.endDate as string;
+	const { symbol, timeFrame, startDate, endDate } = req.query;
 
-  // 필수 파라미터 검증
-  if (!symbol || !startDateStr || !endDateStr) {
-    return res.status(400).json({ 
-      error: 'symbol, startDate, and endDate are required',
-      example: '/api/history/range?symbol=BTCUSDT&timeFrame=1m&startDate=2024-01-01T00:00:00Z&endDate=2024-01-02T00:00:00Z'
-    });
-  }
+	// 필수 파라미터 검증
+	if (!symbol || typeof symbol !== 'string') {
+		return res.status(400).json({ 
+		error: 'symbol parameter is required and must be a string' 
+		});
+	}
 
-  // 시간 프레임 유효성 검증
-  if (!HistoryService.isValidTimeFrame(timeFrame)) {
-    return res.status(400).json({ 
-      error: `Invalid timeFrame. Supported timeFrames: ${HistoryService.getSupportedTimeFrames().join(', ')}`,
-      provided: timeFrame
-    });
-  }
+	if (!timeFrame || typeof timeFrame !== 'string') {
+		return res.status(400).json({ 
+		error: 'timeFrame parameter is required and must be a string' 
+		});
+	}
 
-  // 날짜 형식 검증
-  const startDate = new Date(startDateStr);
-  const endDate = new Date(endDateStr);
+	if (!startDate || typeof startDate !== 'string') {
+		return res.status(400).json({ 
+		error: 'startDate parameter is required and must be a string' 
+		});
+	}
 
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    return res.status(400).json({ 
-      error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)',
-      startDate: startDateStr,
-      endDate: endDateStr
-    });
-  }
+	if (!endDate || typeof endDate !== 'string') {
+		return res.status(400).json({ 
+		error: 'endDate parameter is required and must be a string' 
+		});
+	}
 
-  if (startDate >= endDate) {
-    return res.status(400).json({ 
-      error: 'startDate must be before endDate',
-      startDate: startDateStr,
-      endDate: endDateStr
-    });
-  }
+	// timeFrame 유효성 검증
+	if (!isValidTimeFrame(timeFrame)) {
+		return res.status(400).json({ 
+		error: 'Invalid timeFrame. Supported values: 1m, 5m, 1h, 1d, 1M' 
+		});
+	}
 
-  // 검증된 값들을 req에 저장
-  req.validatedQuery = {
-    symbol,
-    timeFrame,
-    startDate,
-    endDate
-  };
+	// 날짜 형식 검증
+	const parsedStartDate = new Date(startDate);
+	const parsedEndDate = new Date(endDate);
 
-  next();
+	if (isNaN(parsedStartDate.getTime())) {
+		return res.status(400).json({ 
+		error: 'Invalid startDate format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)' 
+		});
+	}
+
+	if (isNaN(parsedEndDate.getTime())) {
+		return res.status(400).json({ 
+		error: 'Invalid endDate format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)' 
+		});
+	}
+
+	// 날짜 범위 검증
+	if (parsedStartDate >= parsedEndDate) {
+		return res.status(400).json({ 
+		error: 'startDate must be earlier than endDate' 
+		});
+	}
+
+	// 최대 범위 검증 (예: 1년)
+	const maxRangeMs = 365 * 24 * 60 * 60 * 1000; // 1년
+	if (parsedEndDate.getTime() - parsedStartDate.getTime() > maxRangeMs) {
+		return res.status(400).json({ 
+		error: 'Date range cannot exceed 1 year' 
+		});
+	}
+
+	// 검증된 쿼리를 req에 저장
+	req.validatedQuery = {
+		symbol: symbol.toUpperCase(),
+		timeFrame,
+		startDate: parsedStartDate,
+		endDate: parsedEndDate
+	};
+
+	next();
 };
 
 /**
- * 최신 데이터 조회 유효성 검증 미들웨어
+ * 최신 데이터 쿼리 검증 미들웨어
  */
 export const validateLatestDataQuery = (req: Request, res: Response, next: NextFunction) => {
-  const symbol = String(req.query.symbol);
-  const timeFrame = (req.query.timeFrame as string) || '1m';
+	const { symbol, timeFrame } = req.query;
 
-  // 필수 파라미터 검증
-  if (!symbol) {
-    return res.status(400).json({ 
-      error: 'symbol is required',
-      example: '/api/history/latest?symbol=BTCUSDT&timeFrame=1m'
-    });
-  }
+	// 필수 파라미터 검증
+	if (!symbol || typeof symbol !== 'string') {
+		return res.status(400).json({ 
+		error: 'symbol parameter is required and must be a string' 
+		});
+	}
 
-  // 시간 프레임 유효성 검증
-  if (!HistoryService.isValidTimeFrame(timeFrame)) {
-    return res.status(400).json({ 
-      error: `Invalid timeFrame. Supported timeFrames: ${HistoryService.getSupportedTimeFrames().join(', ')}`,
-      provided: timeFrame
-    });
-  }
+	if (!timeFrame || typeof timeFrame !== 'string') {
+		return res.status(400).json({ 
+		error: 'timeFrame parameter is required and must be a string' 
+		});
+	}
 
-  // 검증된 값들을 req에 저장
-  req.validatedQuery = {
-    symbol,
-    timeFrame
-  };
+	// timeFrame 유효성 검증
+	if (!isValidTimeFrame(timeFrame)) {
+		return res.status(400).json({ 
+		error: 'Invalid timeFrame. Supported values: 1m, 5m, 1h, 1d, 1M' 
+		});
+	}
 
-  next();
-};
+	// 검증된 쿼리를 req에 저장
+	req.validatedQuery = {
+		symbol: symbol.toUpperCase(),
+		timeFrame
+	};
 
-// TypeScript 타입 확장
-declare global {
-  namespace Express {
-    interface Request {
-      validatedQuery?: {
-        symbol: string;
-        timeFrame: string;
-        limit?: number;
-        startDate?: Date;
-        endDate?: Date;
-      };
-    }
-  }
-} 
+	next();
+}; 

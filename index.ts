@@ -3,11 +3,10 @@ import express from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { AppDataSource } from './config/data-source';
-import coinRoutes from './route/coinRoutes';
+import apiRoutes from './route/index';
 import { coinSocket } from './socket/coinSocket';
 import logger from './log/logger';
 import { fetchAllCoinSymbols, startDataCollection } from './service/coinService';
-import historyRoutes from './route/historyRoutes';
 import { registerAggregateTimers } from './service/aggregateService';
 
 const app = express();
@@ -16,9 +15,8 @@ const io = new SocketIOServer(server);
 
 // 미들웨어 설정
 app.use(express.json());
-// REST API 라우터 설정
-app.use('/api/coins', coinRoutes);
-app.use('/api', historyRoutes);
+// REST API 라우터 설정 - 통합 라우터 사용
+app.use('/api', apiRoutes);
 
 // 소켓 연결 설정
 coinSocket(io);

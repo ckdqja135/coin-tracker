@@ -5,141 +5,249 @@ import { tb_hour } from '../models/tb_hour';
 import { tb_day } from '../models/tb_day';
 import { tb_month } from '../models/tb_month';
 import logger from '../log/logger';
+import { coinDataBuffer } from './coinService';
 
 /**
- * 지정된 시간 범위의 1분 데이터를 집계하여 상위 시간 단위로 변환
+ * 1분 데이터 저장 (coinDataBuffer에서 직접 저장)
  */
-export const aggregateData = async (
-    startTime: Date, 
-    endTime: Date, 
-    targetRepository: any, 
-    timeFrame: string
-) => {
-    const coinRepo = AppDataSource.getRepository(Coin);
-
+export const aggregate1Min = async () => {
     try {
-        // 해당 시간 범위의 코인별 집계 데이터 계산
-        const aggregatedData = await coinRepo
-            .createQueryBuilder('coin')
-            .select('coin.coin_id', 'coin_id')
-            .addSelect('MIN(coin.open)', 'open')
-            .addSelect('MAX(coin.close)', 'close')
-            .addSelect('MAX(coin.high)', 'high')
-            .addSelect('MIN(coin.low)', 'low')
-            .addSelect('MIN(coin.createdAt)', 'start_time')
-            .addSelect('MAX(coin.createdAt)', 'end_time')
-            .where('coin.createdAt >= :startTime AND coin.createdAt < :endTime', { 
-                startTime, 
-                endTime 
-            })
-            .groupBy('coin.coin_id')
-            .getRawMany();
+        const latestCoinDataArray = Object.values(coinDataBuffer) as any[];
 
-        if (aggregatedData.length === 0) {
-            // 집계할 데이터가 없을 때는 로그를 출력하지 않음 (스팸 방지)
-            return;
-        }
+        if (latestCoinDataArray.length > 0) {
+            const now = new Date();
+            // 현재 시간을 1분 단위로 내림
+            const timeId = Math.floor(now.getTime() / (60 * 1000)) * (60 * 1000);
+            
+            const coinRepository = AppDataSource.getRepository(Coin);
+            
+            let savedCount = 0;
+            for (const coinData of latestCoinDataArray) {
+                // 1분 단위 고유 ID로 변경
+                const dataToSave = {
+                    ...coinData,
+                    id: timeId,
+                    createdAt: new Date(timeId),
+                    updatedAt: new Date()
+                };
 
-        let savedCount = 0;
-        // 집계된 데이터를 해당 테이블에 저장
-        for (const data of aggregatedData) {
-            const aggregateRecord = {
-                id: startTime.getTime(), // 시작 시간을 ID로 사용
-                coin_id: data.coin_id,
-                open: Number(data.open),
-                close: Number(data.close),
-                high: Number(data.high),
-                low: Number(data.low),
-                createdAt: startTime,
-                updatedAt: new Date()
-            };
+                // 중복 체크
+                const existing = await coinRepository.findOne({
+                    where: { 
+                        id: dataToSave.id, 
+                        coin_id: dataToSave.coin_id 
+                    }
+                });
 
-            // 중복 체크 후 저장
-            const existing = await targetRepository.findOne({
-                where: { 
-                    id: aggregateRecord.id, 
-                    coin_id: aggregateRecord.coin_id 
+                if (!existing) {
+                    await coinRepository.save(dataToSave);
+                    savedCount++;
                 }
-            });
+            }
 
-            if (!existing) {
-                await targetRepository.save(aggregateRecord);
-                savedCount++;
+            if (savedCount > 0) {
+                logger.info(`[1분] 집계 완료: ${savedCount}개 코인`);
             }
         }
-
-        if (savedCount > 0) {
-            logger.info(`[${timeFrame}] 집계 완료: ${savedCount}개 코인, ${startTime.toISOString()}`);
-        }
-    } catch (error) {
-        logger.error(`[${timeFrame}] 집계 실패:`, error);
+    } catch (err: any) {
+        logger.error(`[1분] 집계 실패: ${err.message}`);
     }
 };
 
 /**
- * 5분 집계 실행
+ * 5분 집계 실행 (coinDataBuffer에서 직접 저장)
  */
 export const aggregate5Min = async () => {
-    const now = new Date();
-    // 현재 시간을 5분 단위로 내림 (예: 08:47:xx -> 08:45:00)
-    const endTime = new Date(Math.floor(now.getTime() / (5 * 60 * 1000)) * (5 * 60 * 1000));
-    const startTime = new Date(endTime.getTime() - (5 * 60 * 1000));
+    try {
+        const latestCoinDataArray = Object.values(coinDataBuffer) as any[];
 
-    await aggregateData(
-        startTime, 
-        endTime, 
-        AppDataSource.getRepository(tb_5min), 
-        '5분'
-    );
+        if (latestCoinDataArray.length > 0) {
+            const now = new Date();
+            // 현재 시간을 5분 단위로 내림
+            const timeId = Math.floor(now.getTime() / (5 * 60 * 1000)) * (5 * 60 * 1000);
+            
+            const repository = AppDataSource.getRepository(tb_5min);
+            
+            let savedCount = 0;
+            for (const coinData of latestCoinDataArray) {
+                // 5분 단위 고유 ID로 변경
+                const dataToSave = {
+                    ...coinData,
+                    id: timeId,
+                    createdAt: new Date(timeId),
+                    updatedAt: new Date()
+                };
+
+                // 중복 체크
+                const existing = await repository.findOne({
+                    where: { 
+                        id: dataToSave.id, 
+                        coin_id: dataToSave.coin_id 
+                    }
+                });
+
+                if (!existing) {
+                    await repository.save(dataToSave);
+                    savedCount++;
+                }
+            }
+
+            if (savedCount > 0) {
+                logger.info(`[5분] 집계 완료: ${savedCount}개 코인`);
+            }
+        }
+    } catch (err: any) {
+        logger.error(`[5분] 집계 실패: ${err.message}`);
+    }
 };
 
 /**
- * 1시간 집계 실행
+ * 1시간 집계 실행 (coinDataBuffer에서 직접 저장)
  */
 export const aggregate1Hour = async () => {
-    const now = new Date();
-    // 현재 시간을 1시간 단위로 내림
-    const endTime = new Date(Math.floor(now.getTime() / (60 * 60 * 1000)) * (60 * 60 * 1000));
-    const startTime = new Date(endTime.getTime() - (60 * 60 * 1000));
+    try {
+        const latestCoinDataArray = Object.values(coinDataBuffer) as any[];
 
-    await aggregateData(
-        startTime, 
-        endTime, 
-        AppDataSource.getRepository(tb_hour), 
-        '1시간'
-    );
+        if (latestCoinDataArray.length > 0) {
+            const now = new Date();
+            // 현재 시간을 1시간 단위로 내림
+            const timeId = Math.floor(now.getTime() / (60 * 60 * 1000)) * (60 * 60 * 1000);
+            
+            const repository = AppDataSource.getRepository(tb_hour);
+            
+            let savedCount = 0;
+            for (const coinData of latestCoinDataArray) {
+                // 1시간 단위 고유 ID로 변경
+                const dataToSave = {
+                    ...coinData,
+                    id: timeId,
+                    createdAt: new Date(timeId),
+                    updatedAt: new Date()
+                };
+
+                // 중복 체크
+                const existing = await repository.findOne({
+                    where: { 
+                        id: dataToSave.id, 
+                        coin_id: dataToSave.coin_id 
+                    }
+                });
+
+                if (!existing) {
+                    await repository.save(dataToSave);
+                    savedCount++;
+                }
+            }
+
+            if (savedCount > 0) {
+                logger.info(`[1시간] 집계 완료: ${savedCount}개 코인`);
+            }
+        }
+    } catch (err: any) {
+        logger.error(`[1시간] 집계 실패: ${err.message}`);
+    }
 };
 
 /**
- * 1일 집계 실행
+ * 1일 집계 실행 (coinDataBuffer에서 직접 저장)
  */
 export const aggregate1Day = async () => {
-    const now = new Date();
-    // 현재 날짜를 1일 단위로 내림 (자정으로 설정)
-    const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startTime = new Date(endTime.getTime() - (24 * 60 * 60 * 1000));
+    try {
+        const latestCoinDataArray = Object.values(coinDataBuffer) as any[];
 
-    await aggregateData(
-        startTime, 
-        endTime, 
-        AppDataSource.getRepository(tb_day), 
-        '1일'
-    );
+        if (latestCoinDataArray.length > 0) {
+            const now = new Date();
+            // 현재 날짜를 1일 단위로 내림 (자정)
+            const timeId = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            
+            const repository = AppDataSource.getRepository(tb_day);
+            
+            let savedCount = 0;
+            for (const coinData of latestCoinDataArray) {
+                // 1일 단위 고유 ID로 변경
+                const dataToSave = {
+                    ...coinData,
+                    id: timeId,
+                    createdAt: new Date(timeId),
+                    updatedAt: new Date()
+                };
+
+                // 중복 체크
+                const existing = await repository.findOne({
+                    where: { 
+                        id: dataToSave.id, 
+                        coin_id: dataToSave.coin_id 
+                    }
+                });
+
+                if (!existing) {
+                    await repository.save(dataToSave);
+                    savedCount++;
+                }
+            }
+
+            if (savedCount > 0) {
+                logger.info(`[1일] 집계 완료: ${savedCount}개 코인`);
+            }
+        }
+    } catch (err: any) {
+        logger.error(`[1일] 집계 실패: ${err.message}`);
+    }
 };
 
 /**
- * 1개월 집계 실행 (비활성화 - 로그 스팸 방지)
+ * 1개월 집계 실행 (coinDataBuffer에서 직접 저장)
  */
 export const aggregate1Month = async () => {
-    // 1개월 집계는 현재 비활성화 (로그 스팸 방지)
-    // 필요시 수동으로 실행하도록 함
-    return;
+    try {
+        const latestCoinDataArray = Object.values(coinDataBuffer) as any[];
+
+        if (latestCoinDataArray.length > 0) {
+            const now = new Date();
+            // 현재 월의 첫날
+            const timeId = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            
+            const repository = AppDataSource.getRepository(tb_month);
+            
+            let savedCount = 0;
+            for (const coinData of latestCoinDataArray) {
+                // 1개월 단위 고유 ID로 변경
+                const dataToSave = {
+                    ...coinData,
+                    id: timeId,
+                    createdAt: new Date(timeId),
+                    updatedAt: new Date()
+                };
+
+                // 중복 체크
+                const existing = await repository.findOne({
+                    where: { 
+                        id: dataToSave.id, 
+                        coin_id: dataToSave.coin_id 
+                    }
+                });
+
+                if (!existing) {
+                    await repository.save(dataToSave);
+                    savedCount++;
+                }
+            }
+
+            if (savedCount > 0) {
+                logger.info(`[1개월] 집계 완료: ${savedCount}개 코인`);
+            }
+        }
+    } catch (err: any) {
+        logger.error(`[1개월] 집계 실패: ${err.message}`);
+    }
 };
 
 // 타이머 ID를 저장할 변수들
+let timer1Min: NodeJS.Timeout | null = null;
 let timer5Min: NodeJS.Timeout | null = null;
 let timer1Hour: NodeJS.Timeout | null = null;
 let timer1Day: NodeJS.Timeout | null = null;
+let timer1Month: NodeJS.Timeout | null = null;
 
 /**
  * 주기적 집계 타이머 등록
@@ -148,9 +256,16 @@ export function registerAggregateTimers(serverStartTime: Date) {
     logger.info('집계 타이머 등록 시작');
 
     // 기존 타이머가 있다면 정리
+    if (timer1Min) clearInterval(timer1Min);
     if (timer5Min) clearInterval(timer5Min);
     if (timer1Hour) clearInterval(timer1Hour);
     if (timer1Day) clearInterval(timer1Day);
+    if (timer1Month) clearInterval(timer1Month);
+
+    // 1분마다 1분 데이터 저장
+    timer1Min = setInterval(async () => {
+        await aggregate1Min();
+    }, 60 * 1000); // 1분
 
     // 5분마다 5분 집계 실행
     timer5Min = setInterval(async () => {
@@ -167,24 +282,22 @@ export function registerAggregateTimers(serverStartTime: Date) {
         await aggregate1Day();
     }, 24 * 60 * 60 * 1000); // 24시간
 
-    // 1개월 집계는 비활성화 (로그 스팸 방지)
-    // timer1Month = setInterval(async () => {
-    //     await aggregate1Month();
-    // }, 30 * 24 * 60 * 60 * 1000); // 30일
+    // 1개월마다 1개월 집계 실행
+    timer1Month = setInterval(async () => {
+        await aggregate1Month();
+    }, 30 * 24 * 60 * 60 * 1000); // 30일
 
-    // 서버 시작 후 1분 뒤에 첫 5분 집계 실행 (테스트용)
-    setTimeout(async () => {
-        logger.info('첫 5분 집계 실행');
-        await aggregate5Min();
-    }, 60 * 1000); // 1분 후
-
-    logger.info('집계 타이머 등록 완료 (5분, 1시간, 1일)');
+    logger.info('집계 타이머 등록 완료 (1분, 5분, 1시간, 1일, 1개월)');
 }
 
 /**
  * 타이머 정리 함수
  */
 export function clearAggregateTimers() {
+    if (timer1Min) {
+        clearInterval(timer1Min);
+        timer1Min = null;
+    }
     if (timer5Min) {
         clearInterval(timer5Min);
         timer5Min = null;
@@ -196,6 +309,10 @@ export function clearAggregateTimers() {
     if (timer1Day) {
         clearInterval(timer1Day);
         timer1Day = null;
+    }
+    if (timer1Month) {
+        clearInterval(timer1Month);
+        timer1Month = null;
     }
     logger.info('집계 타이머 정리 완료');
 } 

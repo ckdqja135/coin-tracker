@@ -1,10 +1,42 @@
 import axios from 'axios';
 import { AppDataSource } from '../config/data-source';
 import { Coin } from '../models/coin';
+import { tb_5min } from '../models/tb_5min';
+import { tb_hour } from '../models/tb_hour';
+import { tb_day } from '../models/tb_day';
+import { tb_month } from '../models/tb_month';
 import logger from '../log/logger';
 
-// 해시맵을 전역 변수로 설정
-const coinDataBuffer: { [key: string]: any } = {};
+// 해시맵을 전역 변수로 설정 (export 추가)
+export const coinDataBuffer: { [key: string]: any } = {};
+
+// 시간 프레임 타입 정의
+export type TimeFrame = '1m' | '5m' | '1h' | '1d' | '1M';
+
+// 지원되는 시간 프레임 목록
+const SUPPORTED_TIME_FRAMES: TimeFrame[] = ['1m', '5m', '1h', '1d', '1M'];
+
+// 시간 프레임 유효성 검증
+export const isValidTimeFrame = (timeFrame: string): timeFrame is TimeFrame => {
+    return SUPPORTED_TIME_FRAMES.includes(timeFrame as TimeFrame);
+};
+
+// 지원되는 시간 프레임 목록 반환
+export const getSupportedTimeFrames = (): TimeFrame[] => {
+    return [...SUPPORTED_TIME_FRAMES];
+};
+
+// 시간 프레임에 따른 테이블 엔티티 반환
+const getEntityByTimeFrame = (timeFrame: TimeFrame) => {
+    switch (timeFrame) {
+        case '1m': return Coin;
+        case '5m': return tb_5min;
+        case '1h': return tb_hour;
+        case '1d': return tb_day;
+        case '1M': return tb_month;
+        default: throw new Error(`Unsupported timeFrame: ${timeFrame}`);
+    }
+};
 
 // Binance API에서 거래 가능한 전체 코인 목록을 가져오는 함수
 export const fetchAllCoinSymbols = async (): Promise<string[]> => {
@@ -58,7 +90,7 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
         // console.clear();
         // console.table(allCoinData);
 
-        // 소켓을 통해 데이터 전송
+        // 소켓을 통해 데이터 전송 (로그 제거)
         if (io) {
             io.emit('coinData', coinData);
         }
@@ -75,22 +107,6 @@ export const fetchCoinData = async (coinId: string, io?: any): Promise<any> => {
     }
 };
 
-// 최신 코인 데이터를 데이터베이스에 저장하는 함수
-export const saveCoinDataToDB = async (): Promise<void> => {
-    try {
-        const latestCoinDataArray = Object.values(coinDataBuffer);
-
-        if (latestCoinDataArray.length > 0) {
-            const coinRepository = AppDataSource.getRepository(Coin);
-            await coinRepository.save(latestCoinDataArray, { chunk: 100 });
-
-            logger.info(`DB 저장 완료: ${latestCoinDataArray.length}개 코인 데이터`);
-        }
-    } catch (err: any) {
-        logger.error(`Error saving coin data to DB: ${err.message}`);
-    }
-};
-
 // 코인 데이터 수집을 시작하는 함수
 export const startDataCollection = (coinId: string, io?: any): void => {
     setInterval(async () => {
@@ -101,20 +117,81 @@ export const startDataCollection = (coinId: string, io?: any): void => {
         }
     }, 1000); // 1초마다 데이터 갱신
 
-    setInterval(saveCoinDataToDB, 60000); // 1분마다 데이터베이스에 저장
+    // 1분마다 데이터베이스 저장은 aggregateService에서 처리
 };
 
-// 특정 코인의 데이터를 데이터베이스에서 조회하는 함수
-export const getCoinDataFromDB = async (coinId: string): Promise<Coin[]> => {
+/**
+ * 히스토리 데이터 조회 (기본)
+ */
+export const getHistoryData = async (
+    symbol: string,
+    timeFrame: TimeFrame,
+    limit: number = 100
+): Promise<any[]> => {
     try {
-        const coinRepository = AppDataSource.getRepository(Coin);
-        const coins = await coinRepository.find({
-            where: { coin_id: coinId },
-            order: { id: 'DESC' },
-            take: 60
+        const Entity = getEntityByTimeFrame(timeFrame);
+        const repository = AppDataSource.getRepository(Entity);
+
+        const data = await repository.find({
+            where: { coin_id: symbol },
+            order: { createdAt: 'DESC' },
+            take: limit
         });
-        return coins;
-    } catch (err: any) {
-        throw new Error(`Error fetching coin data from DB: ${err.message}`);
+
+        return data.reverse(); // 시간순 정렬
+    } catch (error) {
+        logger.error(`Error fetching history data: ${error}`);
+        throw error;
+    }
+};
+
+/**
+ * 날짜 범위로 히스토리 데이터 조회
+ */
+export const getHistoryDataByDateRange = async (
+    symbol: string,
+    timeFrame: TimeFrame,
+    startDate: Date,
+    endDate: Date
+): Promise<any[]> => {
+    try {
+        const Entity = getEntityByTimeFrame(timeFrame);
+        const repository = AppDataSource.getRepository(Entity);
+
+        const data = await repository
+            .createQueryBuilder('data')
+            .where('data.coin_id = :symbol', { symbol })
+            .andWhere('data.createdAt >= :startDate', { startDate })
+            .andWhere('data.createdAt <= :endDate', { endDate })
+            .orderBy('data.createdAt', 'ASC')
+            .getMany();
+
+        return data;
+    } catch (error) {
+        logger.error(`Error fetching history data by date range: ${error}`);
+        throw error;
+    }
+};
+
+/**
+ * 최신 데이터 조회
+ */
+export const getLatestData = async (
+    symbol: string,
+    timeFrame: TimeFrame
+): Promise<any | null> => {
+    try {
+        const Entity = getEntityByTimeFrame(timeFrame);
+        const repository = AppDataSource.getRepository(Entity);
+
+        const data = await repository.findOne({
+            where: { coin_id: symbol },
+            order: { createdAt: 'DESC' }
+        });
+
+        return data;
+    } catch (error) {
+        logger.error(`Error fetching latest data: ${error}`);
+        throw error;
     }
 };
