@@ -67,7 +67,7 @@ const generateCandlestickSeries = (data: PriceData[]) => {
 };
 
 const PriceChart: React.FC<PriceChartProps> = ({ 
-  data, 
+  data,
   symbol, 
   timeFrame, 
   chartType, 
