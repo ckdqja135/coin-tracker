@@ -11,13 +11,14 @@ const generateMockData = (timeFrame: TimeFrame) => {
   if (timeFrame === '5m') { interval = 5 * 60000; count = 20; }
   if (timeFrame === '1h') { interval = 60 * 60000; count = 24; }
   if (timeFrame === '1d') { interval = 24 * 60 * 60000; count = 30; }
+  if (timeFrame === '1M') { interval = 30 * 24 * 60 * 60000; count = 12; }
   return Array.from({ length: count }, (_, i) => ({
     timestamp: new Date(Date.now() - (count - i) * interval).toLocaleTimeString(),
     price: Math.random() * 1000 + 20000,
   }));
 };
 
-const DEFAULT_COINS = ['BTC/USDT'];
+const DEFAULT_COINS = ['BTCUSDT'];
 const DEFAULT_TIMEFRAME: TimeFrame = '1m';
 
 const Dashboard: React.FC = () => {
@@ -25,15 +26,16 @@ const Dashboard: React.FC = () => {
   const [coins, setCoins] = useState<string[]>(DEFAULT_COINS);
   const [priceDataMap, setPriceDataMap] = useState<{ [symbol: string]: { [tf in TimeFrame]: { timestamp: string; price: number; }[] } }>(
     {
-      'BTC/USDT': {
+      'BTCUSDT': {
         '1m': generateMockData('1m'),
         '5m': generateMockData('5m'),
         '1h': generateMockData('1h'),
         '1d': generateMockData('1d'),
+        '1M': generateMockData('1M'),
       },
     }
   );
-  const [timeFrames, setTimeFrames] = useState<{ [symbol: string]: TimeFrame }>({ 'BTC/USDT': DEFAULT_TIMEFRAME });
+  const [timeFrames, setTimeFrames] = useState<{ [symbol: string]: TimeFrame }>({ 'BTCUSDT': DEFAULT_TIMEFRAME });
   const socketRef = useRef<any>(null);
 
   // Socket.IO 연결 및 구독 관리
@@ -81,7 +83,7 @@ const Dashboard: React.FC = () => {
         coins.forEach(symbol => {
           const tf = timeFrames[symbol] || DEFAULT_TIMEFRAME;
           const prevData = prev[symbol]?.[tf] || generateMockData(tf);
-          if (!updated[symbol]) updated[symbol] = { '1m': [], '5m': [], '1h': [], '1d': [] };
+          if (!updated[symbol]) updated[symbol] = { '1m': [], '5m': [], '1h': [], '1d': [], '1M': [] };
           // 실시간 데이터가 없을 때만 mock 데이터 추가
           if (!prevData.length || prevData[prevData.length - 1].timestamp === undefined) {
             updated[symbol][tf] = [...prevData.slice(1), {
@@ -132,6 +134,7 @@ const Dashboard: React.FC = () => {
           '5m': generateMockData('5m'),
           '1h': generateMockData('1h'),
           '1d': generateMockData('1d'),
+          '1M': generateMockData('1M'),
         },
       }));
       setTimeFrames(prev => ({ ...prev, [symbol]: DEFAULT_TIMEFRAME }));
@@ -170,7 +173,7 @@ const Dashboard: React.FC = () => {
           </Typography>
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Add Coin Symbol (예: BTC/USDT)"
+              label="Add Coin Symbol (예: BTCUSDT)"
               variant="outlined"
               size="small"
               value={coinInput}
