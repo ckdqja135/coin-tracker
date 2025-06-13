@@ -12,6 +12,11 @@ export interface HistoryPrice {
   price: number;
 }
 
+export interface CoinSymbol {
+  symbol: string;
+  name?: string;
+}
+
 export async function getHistoryPrices(symbol: string, timeFrame: TimeFrame): Promise<HistoryPrice[]> {
   try {
     // 프록시 설정이 있으면 상대 경로 사용, 없으면 절대 경로 사용
@@ -50,4 +55,38 @@ export async function getHistoryPrices(symbol: string, timeFrame: TimeFrame): Pr
       return [];
     }
   }
-} 
+}
+
+export async function getCoinSymbols(): Promise<CoinSymbol[]> {
+  try {
+    // 프록시 설정이 있으면 상대 경로 사용, 없으면 절대 경로 사용
+    const res = await axios.get(`/api/coin/symbols`);
+    
+    if (res.data && Array.isArray(res.data)) {
+      return res.data.map((item: any) => ({
+        symbol: typeof item === 'string' ? item : item.symbol,
+        name: item.name || item.symbol
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    try {
+      // 프록시 실패 시 직접 호출
+      console.log('프록시 실패, 직접 API 호출 시도...');
+      const res = await apiClient.get(`/api/coin/symbols`);
+      
+      if (res.data && Array.isArray(res.data)) {
+        return res.data.map((item: any) => ({
+          symbol: typeof item === 'string' ? item : item.symbol,
+          name: item.name || item.symbol
+        }));
+      }
+      
+      return [];
+    } catch (fallbackError) {
+      console.error('Symbols API 호출 실패:', fallbackError);
+      return [];
+    }
+  }
+}
