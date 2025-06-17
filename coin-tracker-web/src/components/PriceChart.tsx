@@ -275,7 +275,34 @@ const PriceChart: React.FC<PriceChartProps> = ({
       xDateFormat: timeFrame === '1d' ? '%Y-%m-%d' : '%Y-%m-%d %H:%M',
       shared: true,
       valueDecimals: 2,
-      pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
+      formatter: function(this: any): string {
+        const formatPrice = (price: number): string => {
+          return '$' + price.toLocaleString('ko-KR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          });
+        };
+        
+        // 현재 시간대 오프셋 계산
+        const timezoneOffset = new Date().getTimezoneOffset();
+        const offsetHours = Math.abs(timezoneOffset / 60);
+        const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+        const timezoneInfo = `UTC (${offsetSign}${offsetHours})`;
+        
+        let tooltip: string = '<b>' + timezoneInfo + ' ' + Highcharts.dateFormat('%Y-%m-%d %H:%M', this.x) + '</b><br/>';
+        
+        if (this.points) {
+          this.points.forEach((point: any) => {
+            tooltip += '<span style="color:' + point.color + '">\u25CF</span> ' + 
+                      point.series.name + ': <b>' + formatPrice(point.y) + '</b><br/>';
+          });
+        } else {
+          tooltip += '<span style="color:' + this.color + '">\u25CF</span> ' + 
+                    this.series.name + ': <b>' + formatPrice(this.y) + '</b><br/>';
+        }
+        
+        return tooltip;
+      },
     },
     plotOptions: {
       series: {
@@ -378,11 +405,20 @@ const PriceChart: React.FC<PriceChartProps> = ({
             enabled: false
           },
           tooltip: {
-            pointFormat: '<span style="color:{point.color}">\u25CF</span> <b>{series.name}</b><br/>' +
-              'Open: {point.open:.2f}<br/>' +
-              'High: {point.high:.2f}<br/>' +
-              'Low: {point.low:.2f}<br/>' +
-              'Close: {point.close:.2f}<br/>'
+            formatter: function(this: any): string {
+              const formatPrice = (price: number): string => {
+                return '$' + price.toLocaleString('ko-KR', { 
+                  minimumFractionDigits: 2, 
+                  maximumFractionDigits: 2 
+                });
+              };
+              
+              return '<span style="color:' + this.color + '">\u25CF</span> <b>' + this.series.name + '</b><br/>' +
+                '시가: <b>' + formatPrice(this.point.open) + '</b><br/>' +
+                '고가: <b>' + formatPrice(this.point.high) + '</b><br/>' +
+                '저가: <b>' + formatPrice(this.point.low) + '</b><br/>' +
+                '종가: <b>' + formatPrice(this.point.close) + '</b><br/>';
+            }
           }
         });
         

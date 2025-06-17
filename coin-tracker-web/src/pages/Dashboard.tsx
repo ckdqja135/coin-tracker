@@ -36,21 +36,83 @@ const Dashboard: React.FC = () => {
     const socket = socketService.connect();
     socketRef.current = socket;
 
+    // 시간 단위에 따라 타임스탬프를 그룹핑하는 함수
+    const getGroupedTimestamp = (timestamp: string, timeFrame: TimeFrame): string => {
+      const date = new Date(timestamp);
+      
+      switch (timeFrame) {
+        case '1m':
+          // 초를 0으로 설정하여 같은 분으로 그룹핑
+          date.setSeconds(0, 0);
+          break;
+        case '5m':
+          // 5분 단위로 그룹핑
+          date.setMinutes(Math.floor(date.getMinutes() / 5) * 5, 0, 0);
+          break;
+        case '1h':
+          // 1시간 단위로 그룹핑
+          date.setMinutes(0, 0, 0);
+          break;
+        case '1d':
+          // 1일 단위로 그룹핑
+          date.setHours(0, 0, 0, 0);
+          break;
+        case '1M':
+          // 1개월 단위로 그룹핑
+          date.setDate(1);
+          date.setHours(0, 0, 0, 0);
+          break;
+      }
+      
+      return date.toISOString();
+    };
+
     // 서버에서 실시간 데이터 수신
-    socket.on('price_update', (payload: { symbol: string; timeFrame: TimeFrame; price: number; timestamp: string }) => {
-      const key = `${payload.symbol}-${payload.timeFrame}`;
-      setPriceDataMap(prev => {
-        const prevData = prev[key] || [];
-        const newData = [...prevData.slice(1), { price: payload.price, timestamp: payload.timestamp }];
-        return {
-          ...prev,
-          [key]: newData,
-        };
+    socket.on('coinData', (coinData: any) => {
+      console.log('받은 실시간 데이터:', coinData);
+      const symbol = coinData.coin_id;
+      const price = coinData.close;
+      const originalTimestamp = coinData.createdAt || new Date().toISOString();
+      
+      // 모든 시간 단위에 대해 데이터 업데이트
+      charts.forEach(chart => {
+        if (chart.symbol === symbol) {
+          const key = `${symbol}-${chart.timeFrame}`;
+          const groupedTimestamp = getGroupedTimestamp(originalTimestamp, chart.timeFrame);
+          
+          setPriceDataMap(prev => {
+            const prevData = prev[key] || [];
+            if (prevData.length === 0) return prev; // 초기 데이터가 없으면 추가하지 않음
+            
+            const lastItem = prevData[prevData.length - 1];
+            const lastGroupedTimestamp = getGroupedTimestamp(lastItem.timestamp, chart.timeFrame);
+            
+            // 같은 시간 그룹이면 마지막 데이터의 가격만 업데이트
+            if (lastGroupedTimestamp === groupedTimestamp) {
+              const updatedData = [...prevData];
+              updatedData[updatedData.length - 1] = {
+                ...lastItem,
+                price: price // 가격만 업데이트
+              };
+              return {
+                ...prev,
+                [key]: updatedData,
+              };
+            } else {
+              // 새로운 시간 그룹이면 새로운 데이터 포인트 추가
+              const newData = [...prevData.slice(1), { price: price, timestamp: groupedTimestamp }];
+              return {
+                ...prev,
+                [key]: newData,
+              };
+            }
+          });
+        }
       });
     });
 
     return () => {
-      socket.off('price_update');
+      socket.off('coinData');
     };
   }, []);
 
@@ -58,30 +120,9 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const socket = socketRef.current;
     charts.forEach(chart => {
-      socket?.emit('subscribe', { symbol: chart.symbol, timeFrame: chart.timeFrame });
+      console.log(`구독 요청: ${chart.symbol}`);
+      socket?.emit('subscribeToCoin', chart.symbol);
     });
-  }, [charts]);
-
-  // Mock 데이터 업데이트 (실제 데이터 없을 때만)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPriceDataMap(prev => {
-        const updated = { ...prev };
-        charts.forEach(chart => {
-          const key = `${chart.symbol}-${chart.timeFrame}`;
-          const prevData = prev[key];
-          // 데이터가 있고 실시간 업데이트가 필요한 경우에만 mock 업데이트
-          if (prevData && prevData.length > 0) {
-            updated[key] = [...prevData.slice(1), {
-              timestamp: new Date().toISOString(),
-              price: Math.random() * 1000 + 20000,
-            }];
-          }
-        });
-        return updated;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
   }, [charts]);
 
   // 과거 데이터 fetch - 의존성 배열에서 priceDataMap 제거
