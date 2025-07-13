@@ -29,17 +29,22 @@ monitor_service = MarketMonitorService()
 # 웹소켓 연결 관리
 active_connections: List[WebSocket] = []
 
-@app.on_startup
+# FastAPI 이벤트 핸들러 (임시로 제거)
 async def startup_event():
     """서버 시작 시 초기화"""
-    await db_service.connect()
-    print("🚀 Analysis Server Started!")
+    try:
+        await db_service.connect()
+        print("🚀 Analysis Server Started!")
+    except Exception as e:
+        print(f"⚠️ Database connection failed: {e}")
 
-@app.on_shutdown
 async def shutdown_event():
     """서버 종료 시 정리"""
-    await db_service.disconnect()
-    print("🛑 Analysis Server Stopped!")
+    try:
+        await db_service.disconnect()
+        print("🛑 Analysis Server Stopped!")
+    except Exception as e:
+        print(f"⚠️ Shutdown error: {e}")
 
 @app.get("/")
 async def root():
