@@ -16,7 +16,7 @@ class DatabaseService:
         self.port = int(os.getenv('DB_PORT', 3306))
         self.username = os.getenv('DB_USERNAME', 'root')
         self.password = os.getenv('DB_PASSWORD', '123456')
-        self.database = os.getenv('DB_DATABASE', 'test')
+        self.database = os.getenv('DB_DATABASE', 'cointable')
         
         # 동기 엔진 (pandas 사용시)
         self.sync_engine = None
