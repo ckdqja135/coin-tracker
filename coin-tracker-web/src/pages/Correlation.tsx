@@ -101,27 +101,39 @@ const VsBars: React.FC<{ baseId: string; title: string }> = ({ baseId, title }) 
             <span>-1</span><span>0</span><span>1</span>
           </Stack>
           <Box sx={{ position: 'absolute', left: '50%', top: 18, bottom: 0, width: '1px', bgcolor: 'divider' }} />
-          {rows.map(r => (
-            <Box key={r.id} sx={{ mb: 2.5 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>{r.name}</Typography>
-              <Box sx={{ position: 'relative', height: 16, bgcolor: 'surface.track', borderRadius: 99 }}>
-                {r.r != null && Math.abs(r.r) > 0.005 && (
-                  <Box sx={{
-                    position: 'absolute', top: 0, bottom: 0, bgcolor: r.r >= 0 ? UP : DOWN,
-                    left: r.r >= 0 ? '50%' : `${50 + r.r * 50}%`, width: `${Math.abs(r.r) * 50}%`,
-                    borderRadius: r.r >= 0 ? '0 99px 99px 0' : '99px 0 0 99px',
-                  }} />
-                )}
-                <Typography sx={{
-                  position: 'absolute', top: 0, fontSize: 9, lineHeight: '16px', color: r.r != null && Math.abs(r.r) > 0.2 ? '#fff' : '#8a94a3',
-                  left: r.r != null && r.r > 0.2 ? 'calc(50% + 6px)' : r.r != null && r.r < -0.2 ? `calc(${50 + r.r * 50}% + 6px)` : '50%',
-                  transform: r.r == null || Math.abs(r.r) <= 0.2 ? 'translateX(-50%)' : undefined,
-                }}>
-                  {r.r == null ? 'N/A' : r.r.toFixed(2)}
-                </Typography>
+          {rows.map(r => {
+            // 막대가 글씨를 담을 만큼 길면 막대 안쪽 시작 부분에 흰 글씨로,
+            // 짧으면 막대 바로 바깥쪽(양수는 오른쪽, 음수는 왼쪽)에 회색 글씨로 쓴다
+            const v = r.r;
+            const inside = v != null && Math.abs(v) >= 0.25;
+            const textLeft = v == null
+              ? '50%'
+              : inside
+                ? (v > 0 ? 'calc(50% + 10px)' : `calc(${50 + v * 50}% + 10px)`)
+                : (v >= 0 ? `calc(${50 + v * 50}% + 6px)` : `calc(${50 + v * 50}% - 6px)`);
+            const textShift = v == null ? 'translateX(-50%)' : !inside && v < 0 ? 'translateX(-100%)' : undefined;
+            return (
+              <Box key={r.id} sx={{ mb: 3 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.75 }}>{r.name}</Typography>
+                <Box sx={{ position: 'relative', height: 28, bgcolor: 'surface.track', borderRadius: 99 }}>
+                  {v != null && Math.abs(v) > 0.005 && (
+                    <Box sx={{
+                      position: 'absolute', top: 0, bottom: 0, bgcolor: v >= 0 ? UP : DOWN,
+                      left: v >= 0 ? '50%' : `${50 + v * 50}%`, width: `${Math.abs(v) * 50}%`,
+                      borderRadius: v >= 0 ? '0 99px 99px 0' : '99px 0 0 99px',
+                    }} />
+                  )}
+                  <Typography sx={{
+                    position: 'absolute', top: 0, fontSize: 12, fontWeight: 700, lineHeight: '28px', fontVariantNumeric: 'tabular-nums',
+                    color: inside ? '#fff' : 'text.secondary', left: textLeft,
+                    transform: textShift,
+                  }}>
+                    {v == null ? 'N/A' : v.toFixed(2)}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          ))}
+            );
+          })}
         </Box>
       )}
     </Panel>
@@ -144,7 +156,10 @@ const Heatmap: React.FC = () => {
       {loading && !matrix ? <Loading /> : matrix && (
         <Stack direction="row" gap={4} sx={{ overflowX: 'auto', py: 1 }}>
           <Box sx={{ flexGrow: 1, minWidth: 560 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: `110px repeat(${n}, 1fr)`, gap: 1, borderLeft: 0 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: `110px repeat(${n}, 1fr)`, gap: 1, position: 'relative' }}>
+              {/* 왼쪽·아래 축선 */}
+              <Box sx={{ position: 'absolute', left: 113, top: 0, height: n * 66 + (n - 1) * 8 + 4, width: '1px', bgcolor: 'divider' }} />
+              <Box sx={{ position: 'absolute', left: 113, right: 0, top: n * 66 + (n - 1) * 8 + 4, height: '1px', bgcolor: 'divider' }} />
               {UNIVERSE.map((row, i) => (
                 <React.Fragment key={row.id}>
                   <Typography sx={{ fontSize: 12, fontWeight: 700, alignSelf: 'center', textAlign: 'right', pr: 1 }}>{row.name}</Typography>
