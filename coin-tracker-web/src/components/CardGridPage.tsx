@@ -87,7 +87,8 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, base, items, storageKe
       {visible.length === 0 ? (
         <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>{t('cards.empty')}</Typography>
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, gap: 2.5 }}>
+        // 화면 폭에 따라 열 수가 늘어난다 (넓은 화면에서 4열 이상)
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(300px, 1fr))' }, gap: 2.5 }}>
           {visible.map(item => (
             <VsCard key={item.id} title={titleFor(item)} base={base} target={item}
               favorite={favorites.includes(item.id)} onToggleFavorite={() => toggleFavorite(item.id)} onEmbed={() => embed(item.id)} />

@@ -30,7 +30,7 @@ type Series = { base: number; points: [number, number][] };
 /**
  * Coin Impulse Monitor
  * 기준 거래소에서 한국시간 09:00 시가 대비 선택 코인들의 등락률을 1분 단위로 겹쳐 그린다.
- * 09:00부터 지금까지는 1분봉으로 채우고, 이후에는 실시간 시세로 현재 분을 갱신한다. 매일 09:00에 초기화된다.
+ * 과거는 실제 1분봉(1분마다 다시 받음), 진행 중인 1분은 실시간 시세, 미래 구간은 현재 값으로 평평한 점선. 매일 09:00에 초기화된다.
  */
 const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) => {
   const theme = useTheme();
@@ -59,30 +59,34 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     setVersion(v => v + 1);
   }, [exchange.id, dayStart, resetKey]);
 
-  // 아직 기록이 없는 코인은 09:00부터의 1분봉으로 채운다
+  // 과거 구간은 항상 실제 1분봉으로 그린다.
+  // 처음에 09:00부터 받고, 이후 1분마다 다시 받아 덮어쓴다 (서버는 마지막 캔들 이후만 새로 받는다).
+  // 실시간 시세는 "지금 진행 중인 1분"의 값만 갱신한다.
+  const [refreshTick, setRefreshTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setRefreshTick(n => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const coinKey = coins.join(',');
   useEffect(() => {
     const gen = generation.current;
-    const missing = coins.filter(c => !history.current.has(c));
     // 선택 해제된 코인 제거
     Array.from(history.current.keys()).forEach(c => { if (!coins.includes(c)) history.current.delete(c); });
-    if (!missing.length) {
-      setVersion(v => v + 1);
-      return;
-    }
-    setLoading(true);
+    const missing = coins.some(c => !history.current.has(c));
+    if (missing) setLoading(true);
     let failed = false;
-    Promise.all(missing.map(async c => {
+    Promise.all(coins.map(async c => {
       const { source, symbol } = klineOf(exchange, c);
       try {
         const candles = await fetchKlinesSince(source, symbol, '1m', dayStart);
         if (gen !== generation.current || !candles.length) return;
         const base = candles[0].o;
-        const points: [number, number][] = [[dayStart, (candles[0].o / base - 1) * 100]];
+        const points: [number, number][] = [[dayStart, 0]];
         candles.forEach(k => points.push([k.t + MIN, (k.c / base - 1) * 100]));
         history.current.set(c, { base, points });
       } catch {
-        failed = true;
+        if (!history.current.has(c)) failed = true;
       }
     })).finally(() => {
       if (gen === generation.current) {
@@ -93,26 +97,28 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coinKey, exchange.id, dayStart, resetKey, retry]);
+  }, [coinKey, exchange.id, dayStart, resetKey, retry, refreshTick]);
 
-  // 실시간 시세: 현재 분의 점을 갱신하거나 새 분의 점을 추가
+  // 실시간 시세: 현재 분의 점을 갱신하거나 바로 다음 분의 점을 추가.
+  // 사이에 빠진 분이 있으면 직선으로 잇지 않고 1분봉을 다시 받는다.
   useEffect(() => {
     if (!tickers || tickers.exchange !== exchange.id || loading) return;
     const now = Date.now();
     if (dayStartOf(now) !== dayStart) return;
     const minuteEnd = Math.floor(now / MIN) * MIN + MIN;
+    let gap = false;
     coins.forEach(c => {
       const tk = tickers.data[c];
-      if (!tk) return;
-      // 09:00 시가(백필)를 받기 전에는 그리지 않는다
       const s = history.current.get(c);
-      if (!s) return;
+      if (!tk || !s) return;
       const pct = (tk.price / s.base - 1) * 100;
       const last = s.points[s.points.length - 1];
-      if (last && last[0] === minuteEnd) last[1] = pct;
-      else if (!last || last[0] < minuteEnd) s.points.push([minuteEnd, pct]);
+      if (last[0] === minuteEnd) last[1] = pct;
+      else if (last[0] === minuteEnd - MIN) s.points.push([minuteEnd, pct]);
+      else if (last[0] < minuteEnd - MIN) gap = true;
     });
-    setVersion(v => v + 1);
+    if (gap) setRefreshTick(n => n + 1);
+    else setVersion(v => v + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tickers]);
 
@@ -130,6 +136,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     const text = theme.palette.text.secondary;
     const grid = theme.palette.mode === 'dark' ? '#2a2f38' : '#eef0f4';
 
+    const xMax = Math.max(now + 60 * MIN, dayStart + 10 * 3600_000);
     const series: Highcharts.SeriesLineOptions[] = coins.map((c, i) => {
       const pts = history.current.get(c)?.points ?? [];
       const lastPct = pts[pts.length - 1]?.[1] ?? 0;
@@ -144,22 +151,49 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         // 업데이트 시 이전 점의 옵션이 병합되어 남지 않도록 점마다 라벨/마커 여부를 명시
         data: pts.map(([x, y], idx) => {
           const last = idx === pts.length - 1;
-          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: last } };
+          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: false } };
         }),
         custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-' },
+      };
+    });
+
+    // 미래 구간: 현재 값에서 차트 오른쪽 끝까지 점선으로 평평하게 잇고, 끝에 마켓 이름 라벨을 단다
+    const future: Highcharts.SeriesLineOptions[] = coins.flatMap((c, i) => {
+      const pts = history.current.get(c)?.points ?? [];
+      const last = pts[pts.length - 1];
+      if (!last || last[0] >= xMax) return [];
+      const color = COLORS[i % COLORS.length];
+      return [{
+        name: exchange.market(c),
+        type: 'line' as const,
+        id: `${c}-future`,
+        linkedTo: c,
+        color,
+        dashStyle: 'ShortDot' as const,
+        lineWidth: 1,
+        opacity: 0.7,
+        enableMouseTracking: false,
+        showInLegend: false,
+        data: [
+          { x: last[0], y: last[1], dataLabels: { enabled: false } },
+          { x: xMax, y: last[1], dataLabels: { enabled: true } },
+        ],
         dataLabels: {
           enabled: false,
           allowOverlap: true,
           format: '{series.name}',
           align: 'left',
           verticalAlign: 'middle',
-          x: 6,
+          x: 4,
+          // 플롯 영역 안으로 밀어 넣지 않고 오른쪽 여백으로 넘겨, 점선 끝 오른쪽에 붙인다
+          overflow: 'allow',
+          crop: false,
           backgroundColor: color,
           borderRadius: 3,
           padding: 2,
           style: { color: '#fff', fontSize: '10px', fontWeight: '700', textOutline: 'none' },
         },
-      };
+      }];
     });
 
     return {
@@ -188,9 +222,14 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       exporting: { enabled: false },
       legend: {
         enabled: true,
+        // 범례를 차트 위쪽에 한 줄에 하나씩 쌓아, 그래프와 x축이 차트 폭 전체를 쓰게 한다
+        // (왼쪽 세로 범례는 그만큼 그래프를 오른쪽으로 밀어 가운데에 몰려 보였다)
         align: 'left',
         verticalAlign: 'top',
-        layout: 'vertical',
+        layout: 'horizontal',
+        width: 420,
+        itemWidth: 420,
+        margin: 8,
         itemStyle: { color: text, fontSize: '11px', fontWeight: '400' },
         itemHoverStyle: { color: theme.palette.text.primary },
         symbolHeight: 7,
@@ -203,7 +242,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       xAxis: {
         type: 'datetime',
         min: dayStart,
-        max: Math.max(now + 30 * MIN, dayStart + 10 * 3600_000),
+        max: xMax,
         // 눈금은 09:00부터 시작하고, 표시 구간이 12시간을 넘으면 2시간 간격으로 줄여 글자가 겹치거나 기울지 않게 한다
         tickPositioner(this: any) {
           const end = this.max as number;
@@ -213,10 +252,9 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
           return ticks;
         },
         labels: {
-          // 시:분으로 표시하고, 하루가 시작되는 09:00 눈금에만 날짜를 붙인다
+          // 시:분으로만 표시한다 (날짜는 차트 상단 거래소 이름 옆에 표시)
           formatter(this: any) {
-            const hm = Highcharts.dateFormat('%H:%M', this.value);
-            return this.value === dayStart ? `${Highcharts.dateFormat('%m/%d', this.value)} ${hm}` : hm;
+            return Highcharts.dateFormat('%H:%M', this.value);
           },
           style: { color: text, fontSize: '11px' },
           rotation: 0,
@@ -228,12 +266,14 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       },
       yAxis: {
         title: { text: undefined },
-        opposite: true,
+        // 오른쪽 여백은 선 끝 라벨이 쓰므로 % 눈금은 왼쪽에 둔다
+        opposite: false,
         softMin: -0.5,
         softMax: 0.5,
-        labels: { format: '{value:.1f} %', style: { color: '#3d6cf4', fontSize: '10px' } },
+        labels: { format: '{value:.1f} %', style: { color: text, fontSize: '10px' } },
         gridLineColor: grid,
-        plotLines: [{ value: 0, color: '#3d6cf4', width: 1, zIndex: 1 }],
+        // 09:00 시가(0%) 기준선. 코인 선과 헷갈리지 않게 옅은 회색 점선으로 그린다
+        plotLines: [{ value: 0, color: theme.palette.mode === 'dark' ? '#5b6070' : '#c4cad3', width: 1, dashStyle: 'Dash', zIndex: 1 }],
       },
       tooltip: {
         shared: true,
@@ -253,7 +293,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
           states: { hover: { lineWidthPlus: 0 }, inactive: { opacity: 1 } },
         },
       },
-      series,
+      series: [...series, ...future],
     };
     // version이 기록 변경을 나타낸다
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,6 +304,9 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <ExchangeBadge ex={exchange} size={20} />
         <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{exchange.label}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          · {Highcharts.dateFormat(lang === 'ko' ? '%m월 %d일' : '%b %e', dayStart)} 09:00 ~
+        </Typography>
         {loading && <CircularProgress size={14} sx={{ ml: 1 }} />}
       </Box>
       <HighchartsReact highcharts={Highcharts} options={options} />
