@@ -62,22 +62,31 @@ const useNow = (ms: number) => {
   return now;
 };
 
-/** 롱 비중을 원호로 보여주는 게이지 */
+/**
+ * 롱/숏 우세 게이지
+ * 원 위쪽(12시)에서 시계 방향으로 호를 그린다. 호 길이 = 롱·숏 비중 차이, 색 = 우세한 쪽, 호 끝에 빛나는 점.
+ */
 const Gauge: React.FC<{ longShare: number | null; net: number; unit: string }> = ({ longShare, net, unit }) => {
-  const r = 32;
-  const c = 2 * Math.PI * r;
-  const share = longShare ?? 0.5;
+  const size = 84;
+  const cx = size / 2;
+  const r = 36;
   const isLong = net >= 0;
   const color = isLong ? LONG : SHORT;
   const inner = useTheme().palette.ui.chip.bg;
+  // 차이가 없어도 방향은 보이도록 최소 길이를 둔다
+  const diff = longShare == null ? 0 : Math.abs(longShare * 2 - 1);
+  const frac = Math.min(0.999, Math.max(0.04, diff));
+  const angle = frac * 2 * Math.PI;
+  const end = { x: cx + r * Math.sin(angle), y: cx - r * Math.cos(angle) };
+  const arc = `M ${cx} ${cx - r} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${end.x} ${end.y}`;
   return (
-    <Box sx={{ position: 'relative', width: 84, height: 84 }}>
-      <svg width="84" height="84" viewBox="0 0 84 84">
-        <circle cx="42" cy="42" r={r + 6} fill={inner} stroke={color} strokeOpacity={0.25} strokeWidth={1} />
-        <circle cx="42" cy="42" r={r} fill="none" stroke={SHORT} strokeWidth={4} strokeDasharray={`${c * (1 - share)} ${c}`}
-          transform={`rotate(${-90 + share * 360} 42 42)`} strokeLinecap="round" />
-        <circle cx="42" cy="42" r={r} fill="none" stroke={LONG} strokeWidth={4} strokeDasharray={`${c * share} ${c}`}
-          transform="rotate(-90 42 42)" strokeLinecap="round" />
+    <Box sx={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={cx} cy={cx} r={r - 5} fill={inner} stroke={color} strokeOpacity={0.35} strokeWidth={1.5} />
+        <path d={arc} fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" />
+        {/* 호 끝의 빛나는 점 */}
+        <circle cx={end.x} cy={end.y} r={6} fill={color} opacity={0.25} />
+        <circle cx={end.x} cy={end.y} r={3} fill="#fff" stroke={color} strokeWidth={1} />
       </svg>
       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color }}>
         <Typography sx={{ fontSize: 10, lineHeight: 1 }}>{isLong ? '↗' : '↘'}</Typography>
@@ -244,7 +253,7 @@ const LongShort: React.FC = () => {
           {bigTrades.slice(0, 40).map(tr => {
             const color = tr.side === 'buy' ? LONG : SHORT;
             return (
-              <Stack key={tr.id} direction="row" alignItems="center" sx={{ py: 0.6, fontSize: 12 }}>
+              <Stack key={tr.id} direction="row" alignItems="center" sx={{ py: 1.1, fontSize: 12 }}>
                 <Box sx={{ width: 28, color, fontWeight: 700 }}>{tr.side === 'buy' ? '↗' : '↘'}</Box>
                 <Typography sx={{ width: { xs: 56, sm: 90 }, fontSize: 12, color: 'text.secondary' }} noWrap>{EX_META[tr.exchange].label}</Typography>
                 <Typography sx={{ flex: 1, fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'block' } }}>$ {tr.price.toFixed(2)}</Typography>
