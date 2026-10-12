@@ -195,6 +195,8 @@ const Home: React.FC = () => {
   const [mode, setMode] = useState<Mode>('listing');
   const [currency, setCurrency] = useState<Currency>(() => storage.get('cimCurrency', 'USD'));
   const [resetKey, setResetKey] = useState(0);
+  // 처음에는 아이콘과 검색창만 보이고, 코인을 고르면 아래 모니터 영역이 펼쳐진다 (#monitor로 유지)
+  const [opened, setOpened] = useState(() => window.location.hash === '#monitor');
   const chartRef = useRef<HTMLDivElement>(null);
   const base = exchangeMeta(baseId);
 
@@ -208,9 +210,35 @@ const Home: React.FC = () => {
   const chartCoin = coins.includes(active) ? active : coins[0];
   const listedOn = (coin: string) => EXCHANGES.filter(e => tickers[e.id]?.data[coin]).map(e => e.id);
 
+  // 펼친 직후에는 차트·지수 영역이 그려지며 높이가 바뀌므로, 잠시 기다린 뒤 위치를 계산해 스크롤한다
+  const [scrollTick, setScrollTick] = useState(0);
+  useEffect(() => {
+    if (!scrollTick) return;
+    const id = setTimeout(() => {
+      const el = chartRef.current;
+      if (!el) return;
+      // 고정 헤더(메뉴 + 티커 바) 높이만큼 띄운다.
+      // 부드러운 스크롤은 탭이 화면에 안 보일 때 등 실행되지 않는 경우가 있어 즉시 이동한다
+      window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 110);
+    }, 150);
+    return () => clearTimeout(id);
+  }, [scrollTick]);
+
+  const open = () => {
+    setOpened(true);
+    window.history.replaceState(null, '', '#monitor');
+    setScrollTick(n => n + 1);
+  };
+
   const pick = (coin: string) => {
     add(coin);
-    setTimeout(() => chartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    open();
+  };
+
+  const clearAll = () => {
+    clear();
+    setOpened(false);
+    window.history.replaceState(null, '', window.location.pathname);
   };
 
   const pill = (active: boolean) => ({
@@ -221,27 +249,28 @@ const Home: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
       {/* 검색 히어로 */}
-      <Stack alignItems="center" sx={{ py: { xs: 5, md: 10 } }}>
+      <Stack alignItems="center" justifyContent="center"
+        sx={{ py: { xs: 5, md: 10 }, minHeight: opened && coins.length ? undefined : 'calc(100vh - 260px)' }}>
         <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'primary.main', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, mb: 6 }}>◆</Box>
         <Box sx={{ width: '100%', maxWidth: 560 }}>
           <CoinSearch onSelect={pick} size="large" />
         </Box>
         <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1} sx={{ mt: 2 }}>
-          {coins.length > 0 && <Chip label={t('home.clearAll')} onClick={clear} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
+          {coins.length > 0 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
           {coins.map(c => (
-            <Chip key={c} label={c} onClick={() => { setActive(c); chartRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+            <Chip key={c} label={c} onClick={() => { setActive(c); open(); }}
               onDelete={() => remove(c)}
               sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
           ))}
           {coins.length > 0 && (
-            <Button size="small" onClick={() => setResetKey(k => k + 1)} sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            <Button size="small" onClick={() => { setResetKey(k => k + 1); open(); }} sx={{ color: 'text.secondary', fontWeight: 600 }}>
               {t('home.reload')} ⟳
             </Button>
           )}
         </Stack>
       </Stack>
 
-      {coins.length > 0 && chartCoin && (
+      {opened && coins.length > 0 && chartCoin && (
         <>
           <Box ref={chartRef} sx={{ scrollMarginTop: 120 }}>
             <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} onClose={() => remove(chartCoin)} />

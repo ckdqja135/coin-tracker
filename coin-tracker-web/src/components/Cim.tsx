@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import Highcharts from 'highcharts/highstock';
 import HighchartsReact from 'highcharts-react-official';
 import ExchangeBadge from './ExchangeBadge';
+import { useI18n } from '../i18n';
 import { ExchangeMeta, klineOf } from '../lib/exchanges';
 import { ExchangeTickers, fetchKlinesSince } from '../services/market';
 
@@ -33,10 +34,13 @@ type Series = { base: number; points: [number, number][] };
  */
 const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) => {
   const theme = useTheme();
+  const { lang } = useI18n();
   const history = useRef<Map<string, Series>>(new Map());
   const [version, setVersion] = useState(0);
   const [dayStart, setDayStart] = useState(() => dayStartOf(Date.now()));
   const [loading, setLoading] = useState(false);
+  // 백필 실패(거래소 호출 제한 등) 시 다시 시도하기 위한 카운터
+  const [retry, setRetry] = useState(0);
   const generation = useRef(0);
 
   // 09:00 KST가 지나면 새 날로 초기화
@@ -67,6 +71,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       return;
     }
     setLoading(true);
+    let failed = false;
     Promise.all(missing.map(async c => {
       const { source, symbol } = klineOf(exchange, c);
       try {
@@ -77,16 +82,18 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         candles.forEach(k => points.push([k.t + MIN, (k.c / base - 1) * 100]));
         history.current.set(c, { base, points });
       } catch {
-        /* 캔들이 없는 거래소/코인은 실시간 시세만으로 그린다 */
+        failed = true;
       }
     })).finally(() => {
       if (gen === generation.current) {
         setLoading(false);
         setVersion(v => v + 1);
+        // 받지 못한 코인은 잠시 뒤 다시 받는다 (그동안 엉뚱한 기준가로 그리지 않음)
+        if (failed) setTimeout(() => { if (gen === generation.current) setRetry(n => n + 1); }, 5000);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coinKey, exchange.id, dayStart, resetKey]);
+  }, [coinKey, exchange.id, dayStart, resetKey, retry]);
 
   // 실시간 시세: 현재 분의 점을 갱신하거나 새 분의 점을 추가
   useEffect(() => {
@@ -97,12 +104,9 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     coins.forEach(c => {
       const tk = tickers.data[c];
       if (!tk) return;
-      let s = history.current.get(c);
-      if (!s) {
-        // 캔들 백필 실패 시 첫 시세를 기준가로 사용
-        s = { base: tk.price, points: [] };
-        history.current.set(c, s);
-      }
+      // 09:00 시가(백필)를 받기 전에는 그리지 않는다
+      const s = history.current.get(c);
+      if (!s) return;
       const pct = (tk.price / s.base - 1) * 100;
       const last = s.points[s.points.length - 1];
       if (last && last[0] === minuteEnd) last[1] = pct;
@@ -159,7 +163,26 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     });
 
     return {
-      chart: { backgroundColor: 'transparent', height: 520, animation: false, spacing: [10, 70, 10, 10], style: { fontFamily: 'inherit' } },
+      chart: {
+        backgroundColor: 'transparent', height: 520, animation: false, spacing: [10, 70, 10, 10], style: { fontFamily: 'inherit' },
+        events: {
+          // 등락률이 비슷하면 선 끝 라벨이 겹쳐 하나가 가려지므로, 위에서부터 차례로 겹치지 않게 아래로 민다
+          render(this: Highcharts.Chart) {
+            const labels = this.series
+              .map(sr => sr.points[sr.points.length - 1] as any)
+              .filter(pt => pt?.dataLabel?.visibility !== 'hidden' && pt?.dataLabel)
+              .map(pt => pt.dataLabel)
+              .map(lb => ({ lb, y: lb.alignAttr?.y ?? lb.translateY ?? 0, h: lb.height || 16 }))
+              .sort((a, b) => a.y - b.y);
+            let bottom = -Infinity;
+            labels.forEach(item => {
+              const y = Math.max(item.y, bottom + 2);
+              if (y !== item.lb.translateY) item.lb.attr({ translateY: y });
+              bottom = y + item.h;
+            });
+          },
+        },
+      },
       title: { text: undefined },
       credits: { enabled: false },
       exporting: { enabled: false },
@@ -181,8 +204,24 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         type: 'datetime',
         min: dayStart,
         max: Math.max(now + 30 * MIN, dayStart + 10 * 3600_000),
-        tickInterval: 3600_000,
-        labels: { format: '{value:%d %Hh}', style: { color: text, fontSize: '10px' } },
+        // 눈금은 09:00부터 시작하고, 표시 구간이 12시간을 넘으면 2시간 간격으로 줄여 글자가 겹치거나 기울지 않게 한다
+        tickPositioner(this: any) {
+          const end = this.max as number;
+          const step = end - dayStart > 12 * 3600_000 ? 2 * 3600_000 : 3600_000;
+          const ticks: number[] = [];
+          for (let t = dayStart; t <= end; t += step) ticks.push(t);
+          return ticks;
+        },
+        labels: {
+          // 시:분으로 표시하고, 하루가 시작되는 09:00 눈금에만 날짜를 붙인다
+          formatter(this: any) {
+            const hm = Highcharts.dateFormat('%H:%M', this.value);
+            return this.value === dayStart ? `${Highcharts.dateFormat('%m/%d', this.value)} ${hm}` : hm;
+          },
+          style: { color: text, fontSize: '11px' },
+          rotation: 0,
+          autoRotation: [0],
+        },
         lineColor: grid,
         tickColor: grid,
         crosshair: { color: grid },
@@ -198,7 +237,8 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       },
       tooltip: {
         shared: true,
-        xDateFormat: '%Y-%m-%d %H:%M',
+        // 예: 10월 12일 21:37 / Oct 12 21:37
+        xDateFormat: lang === 'ko' ? '%m월 %d일 %H:%M' : '%b %e %H:%M',
         valueDecimals: 3,
         valueSuffix: ' %',
         backgroundColor: theme.palette.background.paper,
@@ -217,7 +257,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     };
     // version이 기록 변경을 나타낸다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, coinKey, currency, theme.palette.mode, exchange.id, dayStart]);
+  }, [version, coinKey, currency, theme.palette.mode, exchange.id, dayStart, lang]);
 
   return (
     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, position: 'relative' }}>

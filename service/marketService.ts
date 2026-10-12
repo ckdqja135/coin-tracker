@@ -44,6 +44,42 @@ const http = axios.create({
 });
 
 // ---------------------------------------------------------------------------
+// 거래소별 호출 간격 제한 + 429 재시도
+// 국내 거래소는 IP당 초당 요청 수 제한이 있어, 같은 호스트로 가는 요청 사이에 최소 간격을 둔다.
+// ---------------------------------------------------------------------------
+const MIN_GAP_MS: Record<string, number> = {
+    'api.upbit.com': 125,     // 캔들 API 초당 약 10회
+    'api.bithumb.com': 110,
+    'api.coinone.co.kr': 110,
+    'api.korbit.co.kr': 125,
+};
+const nextSlot = new Map<string, number>();
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+http.interceptors.request.use(async config => {
+    const host = new URL(config.url!, config.baseURL).hostname;
+    const gap = MIN_GAP_MS[host];
+    if (gap) {
+        const now = Date.now();
+        const slot = Math.max(now, nextSlot.get(host) ?? 0);
+        nextSlot.set(host, slot + gap);
+        if (slot > now) await sleep(slot - now);
+    }
+    return config;
+});
+
+http.interceptors.response.use(undefined, async err => {
+    const config = err.config as (typeof err.config & { __retry?: number }) | undefined;
+    if (err.response?.status === 429 && config && (config.__retry ?? 0) < 3) {
+        config.__retry = (config.__retry ?? 0) + 1;
+        // 업비트는 Remaining-Req 헤더로 남은 횟수를 알려주지만, 단순히 점점 길게 기다린다
+        await sleep(400 * config.__retry);
+        return http.request(config);
+    }
+    throw err;
+});
+
+// ---------------------------------------------------------------------------
 // 캐시
 // ---------------------------------------------------------------------------
 const cache = new Map<string, { expires: number; value: Promise<any> }>();
@@ -803,13 +839,36 @@ const fetchSince = async (source: KlineSource, symbol: string, interval: Interva
     }
 };
 
-export const getKlinesSince = (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
-    // 같은 분 안의 요청은 캐시를 공유한다
-    const key = `since:${source}:${symbol}:${interval}:${since}:${Math.floor(Date.now() / 30_000)}`;
-    return cached(key, 30_000, async () => {
-        const list = await fetchSince(source, symbol, interval, since);
+// 백필 캐시: 오늘 받아 둔 캔들은 그대로 두고, 마지막 캔들 이후 것만 추가로 받는다
+const sinceStore = new Map<string, { candles: Candle[]; fetchedAt: number; pending?: Promise<Candle[]> }>();
+
+export const getKlinesSince = async (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
+    const key = `${source}:${symbol}:${interval}:${since}`;
+    const entry = sinceStore.get(key);
+    if (entry?.pending) return entry.pending;
+    if (entry && Date.now() - entry.fetchedAt < 20_000) return entry.candles;
+
+    const pending = (async () => {
+        const prev = entry?.candles ?? [];
+        // 마지막 캔들(아직 진행 중일 수 있음)부터 다시 받아 덮어쓴다
+        const from = prev.length ? prev[prev.length - 1].t : since;
+        const fresh = await fetchSince(source, symbol, interval, from);
         const map = new Map<number, Candle>();
-        list.forEach(k => { if (k.t >= since) map.set(k.t, k); });
-        return Array.from(map.values()).sort((a, b) => a.t - b.t).slice(-MAX_SINCE_POINTS);
-    });
+        prev.forEach(k => map.set(k.t, k));
+        fresh.forEach(k => { if (k.t >= since) map.set(k.t, k); });
+        const candles = Array.from(map.values()).sort((a, b) => a.t - b.t).slice(-MAX_SINCE_POINTS);
+        sinceStore.set(key, { candles, fetchedAt: Date.now() });
+        // 지난 날짜 캐시 정리
+        sinceStore.forEach((v, k) => { if (Number(k.split(':').pop()) < since) sinceStore.delete(k); });
+        return candles;
+    })();
+
+    sinceStore.set(key, { candles: entry?.candles ?? [], fetchedAt: entry?.fetchedAt ?? 0, pending });
+    try {
+        return await pending;
+    } catch (err) {
+        // 실패하면 이전 캐시를 그대로 둔다
+        if (entry) sinceStore.set(key, entry); else sinceStore.delete(key);
+        throw err;
+    }
 };

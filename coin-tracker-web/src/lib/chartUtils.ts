@@ -132,3 +132,17 @@ export const storage = {
     }
   },
 };
+
+/**
+ * [start, end] 구간만 남기되, 장이 닫혀 구간 안에 점이 없거나 시작이 비어 있으면
+ * 직전 마지막 값으로 채워 평평한 선으로 이어 그린다 (지수·원자재처럼 거래 시간이 정해진 자산용).
+ */
+export const fillRange = <T extends { t: number; v: number }>(points: T[], start: number, end: number): { t: number; v: number }[] => {
+  const before = points.filter(p => p.t < start);
+  const inside = points.filter(p => p.t >= start && p.t <= end).map(p => ({ t: p.t, v: p.v }));
+  const carry = before[before.length - 1];
+  if (carry && (!inside.length || inside[0].t > start)) inside.unshift({ t: start, v: carry.v });
+  const last = inside[inside.length - 1];
+  if (last && last.t < end) inside.push({ t: end, v: last.v });
+  return inside;
+};

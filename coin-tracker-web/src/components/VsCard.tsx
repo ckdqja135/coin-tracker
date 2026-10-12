@@ -5,6 +5,7 @@ import Highcharts from 'highcharts/highstock';
 import HighchartsReact from 'highcharts-react-official';
 import { CardRange, CatalogItem, RANGE_MS, cardLimit, intervalsFor } from '../lib/catalog';
 import { useAsync } from '../lib/useAsync';
+import { fillRange } from '../lib/chartUtils';
 import { Interval, Point } from '../services/market';
 
 const BASE_COLOR = '#6b6f76';
@@ -42,9 +43,13 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
   const iv = intervals.includes(interval) ? interval : intervals[0];
 
   const { data, loading, error } = useAsync(async () => {
-    const limit = cardLimit(range, iv);
+    // 장이 닫힌 자산도 직전 값을 이어 그릴 수 있게 기간보다 넉넉히 받는다
+    const limit = Math.min(1000, cardLimit(range, iv) * 4);
     const [b, tg] = await Promise.all([base ? base.load(iv, limit) : Promise.resolve([] as Point[]), target.load(iv, limit)]);
-    return { b, tg };
+    if (range === 'ALL') return { b, tg };
+    const end = Date.now();
+    const start = end - RANGE_MS[range];
+    return { b: fillRange(b, start, end), tg: fillRange(tg, start, end) };
   }, [base?.id, target.id, range, iv], 120_000);
 
   const options = useMemo<Highcharts.Options>(() => ({
