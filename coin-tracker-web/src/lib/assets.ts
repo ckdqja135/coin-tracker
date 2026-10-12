@@ -49,13 +49,6 @@ export const ASSETS: Asset[] = [
   { id: 'USDKRW', name: 'USD/KRW', short: 'USDKRW', category: 'fx', source: 'yahoo', symbol: 'KRW=X', currency: 'KRW' },
 ];
 
-export const CRYPTO_COINS = ASSETS.filter(a => a.category === 'crypto').map(a => a.id);
 
 export const findAsset = (id: string | null | undefined): Asset | undefined =>
   ASSETS.find(a => a.id.toLowerCase() === (id || '').toLowerCase());
-
-export const searchAssets = (query: string): Asset[] => {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return ASSETS.filter(a => a.id.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)).slice(0, 10);
-};

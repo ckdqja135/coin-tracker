@@ -30,8 +30,17 @@ server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
 });
 
+// 바이낸스를 1초마다 호출해 DB에 쌓는 예전 수집기. 지금 화면에서는 쓰지 않으므로 기본은 끈다.
+// 필요하면 ENABLE_DB_COLLECTOR=true 로 켠다.
+const ENABLE_DB_COLLECTOR = process.env.ENABLE_DB_COLLECTOR === 'true';
+
 AppDataSource.initialize().then(async () => {
     logger.info('Database connected');
+
+    if (!ENABLE_DB_COLLECTOR) {
+        logger.info('DB collector disabled (set ENABLE_DB_COLLECTOR=true to enable)');
+        return;
+    }
 
     // 집계 타이머 등록
     registerAggregateTimers(serverStartTime);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useParams } from 'react-router-dom';
 import { Box, Button, InputBase, Link, Stack, Typography } from '@mui/material';
-import { PageHeader, Panel } from '../components/Panel';
+import { PageHeader } from '../components/Panel';
 import { useI18n, Lang, TKey } from '../i18n';
 
 type Category = 'crypto' | 'commodity' | 'international';
@@ -146,9 +146,12 @@ export const Blog: React.FC = () => {
   return (
     <>
       <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 2 }}>{t('blog.title')}</Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} gap={1} sx={{ mb: 3 }}>
-        <Button sx={pill(cat === 'all')} onClick={() => setCat('all')}>{t('blog.all')}</Button>
-        {CATEGORIES.map(c => <Button key={c} sx={pill(cat === c)} onClick={() => setCat(c)}>{t(`blog.cat.${c}` as TKey)}</Button>)}
+      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} gap={1.5} sx={{ mb: 3 }}>
+        {/* 카테고리 버튼은 화면 폭과 관계없이 한 줄로 나란히 둔다 */}
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          <Button sx={pill(cat === 'all')} onClick={() => setCat('all')}>{t('blog.all')}</Button>
+          {CATEGORIES.map(c => <Button key={c} sx={pill(cat === c)} onClick={() => setCat(c)}>{t(`blog.cat.${c}` as TKey)}</Button>)}
+        </Stack>
         <Box sx={{ flexGrow: 1 }} />
         <Box sx={{ border: 1, borderColor: 'text.secondary', borderRadius: 99, px: 1.5, py: 0.2, display: 'flex', alignItems: 'center', width: { sm: 220 } }}>
           <InputBase value={query} onChange={e => setQuery(e.target.value)} placeholder={t('cards.search')} sx={{ flexGrow: 1, fontSize: 12 }} />
@@ -202,32 +205,218 @@ export const BlogPost: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// 소개 (소개 글 + 직접 그린 일러스트 + 문의 양식)
+// ---------------------------------------------------------------------------
+const CONTACT_EMAIL = 'ckdqja13580@gmail.com';
+
+const ABOUT_TEXT: Record<Lang, { heading: string; paragraphs: string[] }> = {
+  en: {
+    heading: 'About Coin Tracker',
+    paragraphs: [
+      'Coin Tracker collects public market data from Korean and global exchanges and shows it as charts you can read at a glance.',
+      'Compare a coin with derivatives, indices and commodities, watch intraday impulses across exchanges with the Coin Impulse Monitor, and follow large trades in real time.',
+      'It is a personal project. All data is for information only and is not investment advice.',
+    ],
+  },
+  ko: {
+    heading: 'Coin Tracker 소개',
+    paragraphs: [
+      'Coin Tracker는 국내외 거래소의 공개 시장 데이터를 모아 한눈에 읽기 쉬운 차트로 보여줍니다.',
+      '코인을 파생 지표·지수·원자재와 비교하고, Coin Impulse Monitor로 거래소별 당일 등락을 함께 보며, 대규모 체결을 실시간으로 확인할 수 있습니다.',
+      '개인 프로젝트이며, 모든 데이터는 참고용으로 투자 권유가 아닙니다.',
+    ],
+  },
+};
+
+/** 노트북 화면 위 상승 차트 일러스트 (직접 그린 SVG) */
+const AboutIllustration: React.FC = () => (
+  <Box component="svg" viewBox="0 0 320 220" sx={{ width: '100%', maxWidth: 320 }} aria-hidden>
+    <defs>
+      <linearGradient id="about-screen" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#e8f3ff" />
+        <stop offset="1" stopColor="#c9e2ff" />
+      </linearGradient>
+    </defs>
+    <ellipse cx="160" cy="196" rx="130" ry="12" fill="#3182f6" opacity="0.08" />
+    <rect x="58" y="34" width="204" height="132" rx="12" fill="#191f28" />
+    <rect x="68" y="44" width="184" height="112" rx="6" fill="url(#about-screen)" />
+    <polyline points="80,136 108,118 132,126 158,96 184,104 210,74 240,62" fill="none" stroke="#3182f6" strokeWidth="5"
+      strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="240" cy="62" r="7" fill="#fff" stroke="#3182f6" strokeWidth="4" />
+    <path d="M40 166 h240 l-14 18 H54 z" fill="#333d4b" />
+    <circle cx="40" cy="70" r="20" fill="#f7931a" />
+    <text x="40" y="77" textAnchor="middle" fontSize="20" fontWeight="800" fill="#fff">₿</text>
+    <circle cx="286" cy="118" r="15" fill="#627eea" />
+    <text x="286" y="124" textAnchor="middle" fontSize="15" fontWeight="800" fill="#fff">Ξ</text>
+  </Box>
+);
+
 export const About: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { hash } = useLocation();
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [tried, setTried] = useState(false);
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' });
   }, [hash]);
+
+  const text = ABOUT_TEXT[lang];
+  const required = ['name', 'email', 'subject', 'message'] as const;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+  const valid = required.every(k => form[k].trim()) && emailOk;
+
+  // 메일을 받을 서버가 없으므로, 입력 내용으로 메일 앱을 연다
+  const send = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTried(true);
+    if (!valid) return;
+    const body = `${form.message}\n\n---\n${form.name} <${form.email}>`;
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(form.subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const field = (key: keyof typeof form, label: string, multiline = false) => {
+    const empty = tried && !form[key].trim();
+    const badEmail = key === 'email' && tried && !!form.email && !emailOk;
+    return (
+      <Stack direction={{ xs: 'column', sm: 'row' }} gap={{ xs: 0.5, sm: 2 }} alignItems={{ sm: multiline ? 'flex-start' : 'center' }} sx={{ mb: 1.5 }}>
+        <Typography component="label" htmlFor={`contact-${key}`}
+          sx={{ width: { sm: 120 }, flexShrink: 0, textAlign: { sm: 'right' }, fontWeight: 700, fontSize: 14, color: 'text.secondary', pt: { sm: multiline ? 1 : 0 } }}>
+          {label}*
+        </Typography>
+        <Box sx={{ flexGrow: 1 }}>
+          <InputBase id={`contact-${key}`} value={form[key]} multiline={multiline} minRows={multiline ? 6 : undefined}
+            type={key === 'email' ? 'email' : 'text'}
+            onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+            sx={{
+              width: '100%', bgcolor: 'ui.pill.bg', borderRadius: 2, px: 1.5, py: 1, fontSize: 14,
+              border: 1, borderColor: empty || badEmail ? 'error.main' : 'transparent',
+            }} />
+          {(empty || badEmail) && (
+            <Typography sx={{ color: 'error.main', fontSize: 12, mt: 0.5 }}>
+              {badEmail ? t('about.form.badEmail') : t('about.form.required')}
+            </Typography>
+          )}
+        </Box>
+      </Stack>
+    );
+  };
+
   return (
-    <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-      <PageHeader title={t('about.title')} />
-      <Panel><Typography sx={{ lineHeight: 1.8 }}>{t('about.body')}</Typography></Panel>
-      <Box id="contact">
-        <Panel title={t('about.contact')}>
-          <Typography sx={{ mb: 1 }}>{t('about.contactBody')}</Typography>
-          <Link href="mailto:ckdqja13580@gmail.com">ckdqja13580@gmail.com</Link>
-        </Panel>
+    <Box>
+      <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 3 }}>{t('about.title')}</Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.2fr 1fr' }, gap: 4, alignItems: 'center', mb: 6 }}>
+        <Box>
+          <Typography sx={{ fontSize: 17, fontWeight: 800, mb: 1.5 }}>{text.heading}</Typography>
+          {text.paragraphs.map((para, i) => (
+            <Typography key={i} sx={{ fontSize: 14, lineHeight: 1.8, color: 'text.secondary', mb: 1 }}>{para}</Typography>
+          ))}
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}><AboutIllustration /></Box>
+      </Box>
+
+      <Box id="contact" sx={{ scrollMarginTop: 120 }}>
+        <Typography sx={{ fontSize: 22, fontWeight: 800, mb: 1 }}>{t('about.contact')}</Typography>
+        <Typography sx={{ fontSize: 14, color: 'text.secondary', mb: 3 }}>{t('about.contactBody')}</Typography>
+        <Box component="form" noValidate onSubmit={send} sx={{ maxWidth: 900 }}>
+          {field('name', t('about.form.name'))}
+          {field('email', t('about.form.email'))}
+          {field('subject', t('about.form.subject'))}
+          {field('message', t('about.form.message'), true)}
+          <Stack direction="row" alignItems="center" gap={2} sx={{ ml: { sm: '136px' }, mt: 2 }}>
+            <Button type="submit" variant="contained" disableElevation sx={{ borderRadius: 99, px: 5, fontWeight: 700 }}>{t('about.form.send')}</Button>
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+              {t('about.form.note')} <Link href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link>
+            </Typography>
+          </Stack>
+        </Box>
       </Box>
     </Box>
   );
 };
 
+// ---------------------------------------------------------------------------
+// 개인정보 처리방침 (이 사이트가 실제로 동작하는 방식 기준으로 작성)
+// ---------------------------------------------------------------------------
+const POLICY: Record<Lang, { updated: string; intro: string; sections: { title: string; items: string[] }[] }> = {
+  en: {
+    updated: 'Last updated: 2026-10-12',
+    intro: 'This policy explains what information Coin Tracker handles and how. Coin Tracker has no sign-up and does not run ads.',
+    sections: [
+      { title: 'Information we collect', items: [
+        'We do not ask for your name, email or any account information to use the site.',
+        'If you contact us, we receive the name, email address and message you choose to send by email.',
+      ] },
+      { title: 'Data stored in your browser', items: [
+        'Settings such as language, light/dark theme, selected coins, base exchange, saved charts, favorites and whether you closed the storage notice are kept in your browser (localStorage).',
+        'This data never leaves your device and is not sent to our server. You can delete it at any time by clearing site data in your browser.',
+      ] },
+      { title: 'Data our server handles', items: [
+        'Our server requests public market data from exchanges and data providers on your behalf and caches it for a short time.',
+        'Error logs may record the time and the failing request to external services. They do not include personal information.',
+      ] },
+      { title: 'Third-party services', items: [
+        'Real-time trades on the Longs / Shorts page are received by your browser directly from exchange servers (Binance, Bybit, OKX, Bitget). These providers can see your IP address under their own policies.',
+        'Charts and the economic calendar use TradingView embedded widgets, which may set their own cookies.',
+        'Market data comes from public APIs of Upbit, Bithumb, Coinone, Korbit, Gate, Binance, Bybit, OKX, Yahoo Finance, CoinGecko, alternative.me and mempool.space.',
+      ] },
+      { title: 'Changes to this policy', items: [
+        'If this policy changes, we will update this page and the date at the top.',
+      ] },
+      { title: 'Contact', items: [
+        `Questions about this policy can be sent to ${CONTACT_EMAIL}.`,
+      ] },
+    ],
+  },
+  ko: {
+    updated: '최종 수정일: 2026-10-12',
+    intro: '이 방침은 Coin Tracker가 어떤 정보를 어떻게 다루는지 설명합니다. Coin Tracker는 회원가입이 없고 광고를 싣지 않습니다.',
+    sections: [
+      { title: '수집하는 정보', items: [
+        '사이트를 이용하는 데 이름, 이메일, 계정 정보를 요구하지 않습니다.',
+        '문의를 보내시는 경우, 직접 보내신 이름·이메일 주소·내용을 이메일로 받습니다.',
+      ] },
+      { title: '브라우저에 저장되는 정보', items: [
+        '언어, 라이트/다크 테마, 선택한 코인, 기준 거래소, 저장한 차트, 즐겨찾기, 저장 안내 확인 여부 같은 설정은 브라우저(localStorage)에 저장됩니다.',
+        '이 정보는 사용자 기기 밖으로 나가지 않고 우리 서버로 보내지 않습니다. 브라우저에서 사이트 데이터를 삭제하면 언제든 지울 수 있습니다.',
+      ] },
+      { title: '서버가 처리하는 정보', items: [
+        '우리 서버는 거래소와 데이터 제공처의 공개 시장 데이터를 대신 요청하고, 짧은 시간 동안 캐시합니다.',
+        '오류 로그에는 시각과 실패한 외부 요청이 기록될 수 있으며, 개인정보는 포함되지 않습니다.',
+      ] },
+      { title: '외부 서비스', items: [
+        '롱/숏 페이지의 실시간 체결은 브라우저가 거래소 서버(바이낸스, 바이빗, OKX, 비트겟)에서 직접 받습니다. 이 과정에서 각 거래소는 자체 방침에 따라 사용자의 IP 주소를 알 수 있습니다.',
+        '차트와 경제 캘린더는 TradingView 임베드 위젯을 사용하며, 위젯이 자체 쿠키를 설정할 수 있습니다.',
+        '시장 데이터는 업비트, 빗썸, 코인원, 코빗, 게이트, 바이낸스, 바이빗, OKX, Yahoo Finance, CoinGecko, alternative.me, mempool.space의 공개 API에서 가져옵니다.',
+      ] },
+      { title: '방침의 변경', items: [
+        '이 방침이 바뀌면 이 페이지와 위쪽의 수정일을 갱신합니다.',
+      ] },
+      { title: '문의', items: [
+        `이 방침에 대한 문의는 ${CONTACT_EMAIL} 로 보내 주세요.`,
+      ] },
+    ],
+  },
+};
+
 export const Policy: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const doc = POLICY[lang];
   return (
-    <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-      <PageHeader title={t('policy.title')} />
-      <Panel><Typography sx={{ lineHeight: 1.8 }}>{t('policy.body')}</Typography></Panel>
+    <Box sx={{ maxWidth: 900 }}>
+      <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 1 }}>{t('policy.title')}</Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 3 }}>{doc.updated}</Typography>
+      <Typography sx={{ fontSize: 14, lineHeight: 1.8, mb: 4 }}>{doc.intro}</Typography>
+      {doc.sections.map(sec => (
+        <Box key={sec.title} sx={{ mb: 4 }}>
+          <Typography component="h2" sx={{ fontSize: 17, fontWeight: 800, mb: 1.5 }}>{sec.title}</Typography>
+          <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+            {sec.items.map((item, i) => (
+              <Typography component="li" key={i} sx={{ fontSize: 14, lineHeight: 1.8, color: 'text.secondary', mb: 0.5 }}>{item}</Typography>
+            ))}
+          </Box>
+        </Box>
+      ))}
     </Box>
   );
 };

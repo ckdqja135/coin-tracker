@@ -40,7 +40,8 @@ const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
       script.async = true;
       // 투명 배경은 다크 모드에서 위젯 기본 흰 배경이 비치므로 테마 배경색을 직접 지정한다
       script.innerHTML = JSON.stringify({
-        ...config, colorTheme: mode, isTransparent: false, backgroundColor: bg,
+        // 차트(advanced-chart) 위젯은 theme, 캘린더 등 다른 위젯은 colorTheme을 쓴다
+        ...config, theme: mode, colorTheme: mode, isTransparent: false, backgroundColor: bg,
         gridColor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
         width: '100%', height: '100%', locale,
       });

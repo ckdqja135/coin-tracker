@@ -1,6 +1,5 @@
 import React from 'react';
-import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material';
-import { useI18n } from '../i18n';
+import { Box, Paper, Typography } from '@mui/material';
 
 interface Props {
   title?: React.ReactNode;
@@ -23,24 +22,6 @@ export const Panel: React.FC<Props> = ({ title, subtitle, actions, children }) =
     {children}
   </Paper>
 );
-
-/** 차트 영역 로딩/에러 상태 표시 */
-export const ChartState: React.FC<{ loading: boolean; error: string | null; height?: number; children: React.ReactNode }> = ({
-  loading, error, height = 480, children,
-}) => {
-  const { t } = useI18n();
-  if (error) return <Alert severity="error" sx={{ my: 2 }}>{t('common.error')}: {error}</Alert>;
-  return (
-    <Box sx={{ position: 'relative', minHeight: height }}>
-      {children}
-      {loading && (
-        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover' }}>
-          <CircularProgress size={32} />
-        </Box>
-      )}
-    </Box>
-  );
-};
 
 export const PageHeader: React.FC<{ title: string; desc?: string }> = ({ title, desc }) => (
   <Box sx={{ mb: 2 }}>

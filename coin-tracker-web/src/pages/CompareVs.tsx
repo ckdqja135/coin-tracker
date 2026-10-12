@@ -5,13 +5,14 @@ import { useTheme } from '@mui/material/styles';
 import SidebarLayout from '../components/SidebarLayout';
 import SidebarMenu, { MenuGroup } from '../components/SidebarMenu';
 import StockChart, { StockChartHandle, baseOptions, yAxis } from '../components/StockChart';
-import { MA_OPTIONS, Scale } from '../components/ChartToolbar';
 import { useI18n, TKey } from '../i18n';
 import { CardRange, CatalogItem, compareItems } from '../lib/catalog';
 import { downloadCsv, formatTime, sma, storage } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
 import { Interval, Point } from '../services/market';
 
+type Scale = 'linear' | 'log' | 'percent';
+const MA_OPTIONS = [0, 7, 14, 30, 50, 90];
 const RANGES: CardRange[] = ['1D', '1W', '1M', '1Y', 'ALL'];
 const AUTO: Record<CardRange, { interval: Interval; limit: number }> = {
   '1D': { interval: '5m', limit: 288 },
@@ -153,7 +154,8 @@ const CompareVs: React.FC = () => {
         bgcolor: 'ui.card.bg', color: 'ui.card.fg', border: 1, borderColor: 'ui.card.border', overflow: 'hidden',
         borderRadius: `${theme.palette.ui.card.radius}px`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,27,55,0.06)',
       }}>
-        <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'ui.card.divider' }}>
+        {/* 좁은 화면에서는 줄을 바꿔 잘리지 않게 한다 */}
+        <Stack direction="row" flexWrap="wrap" alignItems="center" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'ui.card.divider' }}>
           <Select size="small" value={ma} onChange={e => setMa(Number(e.target.value))}
             renderValue={v => `MA ${v}`}
             sx={{ height: 26, fontSize: 11, color: 'ui.card.fg', '& fieldset': { borderColor: 'ui.card.iconBorder' }, '& .MuiSvgIcon-root': { color: 'ui.card.fg' } }}>
