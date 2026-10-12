@@ -5,6 +5,7 @@ export type Lang = 'en' | 'ko';
 
 const dict = {
   en: {
+    'ls.collecting': 'Collecting · {min} min so far', 'ls.account': 'Account L/S', 'ls.accountHelp': 'Share of accounts holding long vs short positions, published by the exchange (5-minute data).',
     'about.form.name': 'Name', 'about.form.email': 'Email', 'about.form.subject': 'Subject', 'about.form.message': 'Message', 'about.form.send': 'Send',
     'about.form.required': 'Please fill in this field.', 'about.form.badEmail': 'Please enter a valid email address.', 'about.form.note': 'Opens your mail app with this message. You can also write to',
     'compare.myCharts': 'My charts', 'compare.myChart': 'My Chart', 'compare.noSaved': 'No saved charts',
@@ -56,6 +57,7 @@ const dict = {
     'policy.title': 'Privacy Policy',
   },
   ko: {
+    'ls.collecting': '수집 중 · {min}분째', 'ls.account': '계정 롱/숏', 'ls.accountHelp': '거래소가 공개하는, 롱·숏 포지션을 가진 계정의 비중입니다 (5분 단위 데이터).',
     'about.form.name': '이름', 'about.form.email': '이메일', 'about.form.subject': '제목', 'about.form.message': '문의 내용', 'about.form.send': '보내기',
     'about.form.required': '이 항목을 입력해 주세요.', 'about.form.badEmail': '올바른 이메일 주소를 입력해 주세요.', 'about.form.note': '입력한 내용으로 메일 앱이 열립니다. 직접 보내셔도 됩니다:',
     'compare.myCharts': '내 차트', 'compare.myChart': '내 차트', 'compare.noSaved': '저장한 차트가 없습니다',

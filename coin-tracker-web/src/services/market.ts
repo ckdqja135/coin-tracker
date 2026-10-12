@@ -42,7 +42,7 @@ export const fetchOverview = async (): Promise<OverviewItem[]> => (await client.
 export const fetchCoinInfo = async (symbols: string[]): Promise<CoinInfo[]> =>
   (await client.get('/coininfo', { params: { symbols: symbols.join(',') } })).data;
 
-export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty';
+export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty' | 'btc-dominance';
 
 export const fetchSeries = async (kind: SeriesKind, coin: string, interval: Interval, limit: number): Promise<Point[]> => {
   const { data } = await client.get('/series', { params: { kind, coin, interval, limit } });
@@ -53,4 +53,25 @@ export const fetchSeries = async (kind: SeriesKind, coin: string, interval: Inte
 export const fetchKlinesSince = async (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
   const { data } = await client.get('/klines', { params: { source, symbol, interval, since } });
   return data.data;
+};
+
+/** 롱/숏: 서버가 모아 둔 거래소별 테이커 매수/매도 합계와 최근 대형 체결 */
+export type FlowExchange = 'binance' | 'bybit' | 'okx' | 'bitget';
+export interface FlowTrade { exchange: FlowExchange; side: 'buy' | 'sell'; price: number; qty: number; usd: number; time: number; }
+export interface FlowSnapshot {
+  coin: string;
+  now: number;
+  since: Record<FlowExchange, number | null>;
+  windows: Record<string, Record<FlowExchange, { buy: number; sell: number }>>;
+  bigTrades: FlowTrade[];
+}
+
+export const fetchFlow = async (coin: string): Promise<FlowSnapshot> => (await client.get('/flow', { params: { coin } })).data;
+
+/** 거래소 공개 계정 롱/숏 비율 (가장 최근 값) */
+export interface AccountRatio { t: number; long: number; short: number; ratio: number; }
+
+export const fetchAccountRatio = async (exchange: FlowExchange, coin: string): Promise<AccountRatio | null> => {
+  const { data } = await client.get('/longshort', { params: { exchange, coin, period: '5m', limit: 1 } });
+  return data.data?.[data.data.length - 1] ?? null;
 };

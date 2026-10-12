@@ -15,6 +15,8 @@ export interface CatalogItem {
   group: CatalogGroup;
   /** 지원하는 기간 (느린 지표는 1W 이상만) */
   ranges: CardRange[];
+  /** 기간별로 고를 수 있는 봉 단위를 따로 정할 때 (기록 간격이 정해진 지표용) */
+  intervals?: Partial<Record<CardRange, Interval[]>>;
   load: (interval: Interval, limit: number) => Promise<Point[]>;
 }
 
@@ -39,7 +41,8 @@ export const cardLimit = (range: CardRange, interval: Interval) => Math.min(1000
 
 /** 느린 지표는 일 단위 이상으로만 조회한다 */
 export const intervalsFor = (item: CatalogItem, range: CardRange): Interval[] =>
-  item.ranges === SLOW ? (range === '1Y' || range === 'ALL' ? ['1d', '1w'] : ['1d']) : RANGE_INTERVALS[range];
+  item.intervals?.[range]
+  ?? (item.ranges === SLOW ? (range === '1Y' || range === 'ALL' ? ['1d', '1w'] : ['1d']) : RANGE_INTERVALS[range]);
 
 const price = (assetId: string): CatalogItem['load'] => async (interval, limit) => {
   const a = findAsset(assetId)!;
@@ -80,6 +83,12 @@ export const vsTargets = (base: 'BTC' | 'ETH'): CatalogItem[] => [
       { id: 'DIFFICULTY', label: 'Difficulty', short: 'Difficulty', group: 'mining' as const, ranges: SLOW, load: series('difficulty', 'BTC') },
       { id: 'HASHRATE', label: 'Hash Rate', short: 'Hash Rate', group: 'mining' as const, ranges: SLOW, load: series('hashrate', 'BTC') },
       { id: 'FNG', label: 'Crypto Fear & Greed Index', short: 'Fear & Greed', group: 'trending' as const, ranges: SLOW, load: series('fng', 'BTC') },
+      // 서버가 10분마다 직접 기록한 값이라, 10분보다 짧은 봉은 없다
+      {
+        id: 'BTC-DOMINANCE', label: 'Bitcoin Dominance', short: 'BTC.D', group: 'trending' as const, ranges: FAST,
+        intervals: { '1D': ['30m', '1h'], '1W': ['1h', '4h'], '1M': ['4h', '1d'], '1Y': ['1d', '1w'] } as Partial<Record<CardRange, Interval[]>>,
+        load: series('btc-dominance', 'BTC'),
+      },
     ]
     : []),
 ];

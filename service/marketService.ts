@@ -1,5 +1,6 @@
 import axios from 'axios';
 import logger from '../log/logger';
+import { getDominance } from './dominanceRecorder';
 
 /**
  * 외부 거래소/시장 데이터 프록시 서비스
@@ -10,12 +11,12 @@ import logger from '../log/logger';
 export type Interval = '1m' | '5m' | '30m' | '1h' | '4h' | '1d' | '1w' | '1M';
 export type KlineSource = 'binance' | 'binance-futures' | 'upbit' | 'bithumb' | 'coinone' | 'korbit' | 'gateio' | 'yahoo';
 export type MetricType = 'oi' | 'lsr' | 'top-lsr' | 'taker' | 'funding';
-export type LongShortExchange = 'binance' | 'bybit' | 'okx';
+export type LongShortExchange = 'binance' | 'bybit' | 'okx' | 'bitget';
 
 export const INTERVALS: Interval[] = ['1m', '5m', '30m', '1h', '4h', '1d', '1w', '1M'];
 export const KLINE_SOURCES: KlineSource[] = ['binance', 'binance-futures', 'upbit', 'bithumb', 'coinone', 'korbit', 'gateio', 'yahoo'];
 export const METRIC_TYPES: MetricType[] = ['oi', 'lsr', 'top-lsr', 'taker', 'funding'];
-export const LONG_SHORT_EXCHANGES: LongShortExchange[] = ['binance', 'bybit', 'okx'];
+export const LONG_SHORT_EXCHANGES: LongShortExchange[] = ['binance', 'bybit', 'okx', 'bitget'];
 
 export interface Candle {
     t: number; // open time (ms)
@@ -371,6 +372,7 @@ const LS_PERIOD: Record<LongShortExchange, Partial<Record<string, string>>> = {
     binance: { '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '2h': '2h', '4h': '4h', '12h': '12h', '1d': '1d' },
     bybit: { '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '4h': '4h', '1d': '1d' },
     okx: { '5m': '5m', '1h': '1H', '1d': '1D' },
+    bitget: { '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1d' },
 };
 
 export const getLongShortPeriods = (exchange: LongShortExchange): string[] => Object.keys(LS_PERIOD[exchange]);
@@ -411,6 +413,16 @@ export const getLongShort = (exchange: LongShortExchange, coin: string, period: 
                         return { t: +d[0], long, short: 1 - long, ratio };
                     })
                     .sort((a: LongShortPoint, b: LongShortPoint) => a.t - b.t);
+            }
+            case 'bitget': {
+                const { data } = await http.get('https://api.bitget.com/api/v2/mix/market/account-long-short', {
+                    params: { symbol: `${coin}USDT`, period: p },
+                });
+                if (data.code !== '00000') throw new Error(`Bitget error: ${data.msg}`);
+                return data.data
+                    .map((d: any) => ({ t: +d.ts, long: +d.longAccountRatio, short: +d.shortAccountRatio, ratio: +d.longShortAccountRatio }))
+                    .sort((a: LongShortPoint, b: LongShortPoint) => a.t - b.t)
+                    .slice(-lim);
             }
         }
     });
@@ -684,8 +696,8 @@ export const getCoinInfo = (symbols: string[]): Promise<CoinInfo[]> => {
 // ---------------------------------------------------------------------------
 // 비교 카드용 보조 시계열 (거래소별 미결제약정, 공포탐욕지수, 해시레이트, 난이도)
 // ---------------------------------------------------------------------------
-export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty';
-export const SERIES_KINDS: SeriesKind[] = ['oi-binance', 'oi-bybit', 'oi-okx', 'fng', 'hashrate', 'difficulty'];
+export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty' | 'btc-dominance';
+export const SERIES_KINDS: SeriesKind[] = ['oi-binance', 'oi-bybit', 'oi-okx', 'fng', 'hashrate', 'difficulty', 'btc-dominance'];
 
 const BYBIT_OI_INTERVAL: Record<Interval, string> = {
     '1m': '5min', '5m': '5min', '30m': '30min', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1d', '1M': '1d',
@@ -728,6 +740,9 @@ export const getSeries = (kind: SeriesKind, coin: string, interval: Interval, li
                 const { data } = await http.get('https://api.alternative.me/fng/', { params: { limit: Math.ceil((INTERVAL_MS[interval] * limit) / DAY_MS) + 1 } });
                 return data.data.map((d: any) => ({ t: +d.timestamp * 1000, v: +d.value })).sort((a: Point, b: Point) => a.t - b.t);
             }
+            case 'btc-dominance':
+                // 서버가 직접 쌓은 기록 (dominanceRecorder)
+                return getDominance(Date.now() - INTERVAL_MS[interval] * limit, INTERVAL_MS[interval]);
             case 'hashrate':
             case 'difficulty': {
                 const { data } = await http.get(`https://mempool.space/api/v1/mining/hashrate/${mempoolPeriod(interval, limit)}`);

@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import { fmtCompact } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
 import { FEED_EXCHANGES, FeedExchange, FeedTrade, useTradeFeed } from '../lib/useTradeFeed';
-import { fetchTickers } from '../services/market';
+import { AccountRatio, fetchAccountRatio, fetchTickers } from '../services/market';
 
 const COINS = [{ id: 'BTC', name: 'Bitcoin' }, { id: 'ETH', name: 'Ethereum' }] as const;
 const LONG = '#4dbf9a';
@@ -99,12 +99,16 @@ const Gauge: React.FC<{ longShare: number | null; net: number; unit: string }> =
 
 const ExchangeCard: React.FC<{
   ex: FeedExchange; coin: string; trades: FeedTrade[]; now: number;
-  volume: (ex: FeedExchange, ms: number) => { buy: number; sell: number };
-}> = ({ ex, coin, trades, now, volume }) => {
+  volume: (ex: FeedExchange, key: string, ms: number) => { buy: number; sell: number };
+  collectingMinutes: (ex: FeedExchange, ms: number) => number | null;
+  account: AccountRatio | null | undefined;
+}> = ({ ex, coin, trades, now, volume, collectingMinutes, account }) => {
+  const { t } = useI18n();
   const [win, setWin] = useState(WINDOWS[0]);
   const [inCoin, setInCoin] = useState(false);
   const meta = EX_META[ex];
-  const { buy, sell } = volume(ex, win.ms);
+  const { buy, sell } = volume(ex, win.key, win.ms);
+  const collecting = collectingMinutes(ex, win.ms);
   const total = buy + sell;
   const price = trades[0]?.price;
   // USD <-> 코인 수량 전환 (최근 체결가 기준 환산)
@@ -137,6 +141,28 @@ const ExchangeCard: React.FC<{
           </Box>
         </Stack>
       </Box>
+      {/* 서버가 아직 이 기간만큼 모으지 못했으면 알려준다 */}
+      {collecting != null && (
+        <Typography sx={{ fontSize: 10, color: 'ui.card.muted', textAlign: 'center', mt: -1, mb: 1 }}>
+          {t('ls.collecting', { min: String(collecting) })}
+        </Typography>
+      )}
+      {/* 거래소가 공개하는 계정 롱/숏 비율 (실제 포지션을 가진 계정 비중) */}
+      <Stack direction="row" alignItems="center" sx={{ mx: 2, mb: 1.5, px: 1.2, py: 0.8, borderRadius: 1.5, bgcolor: 'ui.chip.bg', fontSize: 11 }}>
+        <Tooltip title={t('ls.accountHelp')}>
+          <Typography sx={{ fontSize: 11, color: 'ui.card.muted', flexGrow: 1, cursor: 'help' }}>{t('ls.account')} ⓘ</Typography>
+        </Tooltip>
+        {account ? (
+          <Typography sx={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ color: LONG }}>{(account.long * 100).toFixed(1)}%</span>
+            {' / '}
+            <span style={{ color: SHORT }}>{(account.short * 100).toFixed(1)}%</span>
+            <Box component="span" sx={{ color: 'ui.card.muted', fontWeight: 400, ml: 0.8 }}>{account.ratio.toFixed(2)}</Box>
+          </Typography>
+        ) : (
+          <Typography sx={{ fontSize: 11, color: 'ui.card.muted' }}>{account === null ? '-' : '…'}</Typography>
+        )}
+      </Stack>
       <Box sx={{ borderTop: 1, borderColor: 'ui.card.divider', mx: 2 }} />
       <Box sx={{ p: 2, pt: 1.5 }}>
         <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
@@ -184,9 +210,14 @@ const LongShort: React.FC = () => {
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
 
-  const { bigTrades, connected, volume } = useTradeFeed(coin, minUsd, paused, tr => { if (!mutedRef.current) beep(tr.side === 'buy'); });
+  const { bigTrades, connected, volume, collectingMinutes } = useTradeFeed(coin, minUsd, paused, tr => { if (!mutedRef.current) beep(tr.side === 'buy'); });
   const now = useNow(1000);
   const ticker = useAsync(() => fetchTickers('binance', [coin]), [coin], 3000);
+  // 거래소별 계정 롱/숏 비율 (5분 단위로 갱신되는 값이라 1분마다 받는다)
+  const accounts = useAsync(async () => {
+    const list = await Promise.all(FEED_EXCHANGES.map(ex => fetchAccountRatio(ex, coin).catch(() => null)));
+    return Object.fromEntries(FEED_EXCHANGES.map((ex, i) => [ex, list[i]])) as Record<FeedExchange, AccountRatio | null>;
+  }, [coin], 60_000);
   const tk = ticker.data?.data[coin];
   const chgAbs = tk && tk.change24h != null ? tk.price - tk.price / (1 + tk.change24h / 100) : null;
   const coinName = COINS.find(c => c.id === coin)!.name;
@@ -208,7 +239,8 @@ const LongShort: React.FC = () => {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '300px minmax(0, 1fr)' }, gap: 3, alignItems: 'start' }}>
         <Box>
           {FEED_EXCHANGES.map(ex => (
-            <ExchangeCard key={ex} ex={ex} coin={coin} trades={bigTrades} now={now} volume={volume} />
+            <ExchangeCard key={ex} ex={ex} coin={coin} trades={bigTrades} now={now} volume={volume}
+              collectingMinutes={collectingMinutes} account={accounts.data?.[ex]} />
           ))}
         </Box>
 

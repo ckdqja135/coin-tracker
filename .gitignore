@@ -8,3 +8,6 @@ logs/
 .env
 
 config/
+
+# 서버가 쌓는 데이터 (BTC 도미넌스 기록 등)
+data/

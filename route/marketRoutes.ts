@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series } from '../controller/marketController';
+import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series, flow } from '../controller/marketController';
 
 const router = Router();
 
@@ -23,5 +23,7 @@ router.get('/overview', overview);
 router.get('/coininfo', coinInfo);
 // 비교 카드 보조 시계열 (거래소별 OI, 공포탐욕지수, 해시레이트, 난이도)
 router.get('/series', series);
+// 롱/숏: 서버가 모아 둔 거래소별 체결 합계와 최근 대형 체결
+router.get('/flow', flow);
 
 export default router;

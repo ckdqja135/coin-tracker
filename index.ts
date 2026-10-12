@@ -8,6 +8,8 @@ import { coinSocket } from './socket/coinSocket';
 import logger from './log/logger';
 import { fetchAllCoinSymbols, startDataCollection } from './service/coinService';
 import { registerAggregateTimers } from './service/aggregateService';
+import { startTradeAggregator } from './service/tradeAggregator';
+import { startDominanceRecorder } from './service/dominanceRecorder';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +30,10 @@ const serverStartTime = new Date();
 // 시장 데이터 API(/api/market)는 DB 없이 동작하므로 DB 연결 여부와 무관하게 서버를 띄운다.
 server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
+    // 롱/숏 페이지용 실시간 체결 집계 (DB 불필요)
+    startTradeAggregator();
+    // BTC 도미넌스 추이 기록 (data/btc-dominance.json)
+    startDominanceRecorder();
 });
 
 // 바이낸스를 1초마다 호출해 DB에 쌓는 예전 수집기. 지금 화면에서는 쓰지 않으므로 기본은 끈다.

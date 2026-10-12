@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FlowSnapshot, fetchFlow } from '../services/market';
 
 export type FeedExchange = 'bitget' | 'binance' | 'bybit' | 'okx';
 
@@ -20,6 +21,10 @@ const KEEP_MS = 4 * 3600_000;
 const MAX_BIG = 300;
 
 type Handler = (t: Omit<FeedTrade, 'id'>) => void;
+
+/** 같은 체결인지 판단하는 키 (서버·브라우저에서 같은 값으로 계산된다) */
+const tradeKey = (t: { exchange: string; time: number; price: number; qty: number }) =>
+  `${t.exchange}|${t.time}|${t.price}|${t.qty.toFixed(6)}`;
 
 interface Source {
   url: (coin: string) => string;
@@ -87,6 +92,10 @@ export const FEED_EXCHANGES: FeedExchange[] = ['binance', 'bybit', 'okx', 'bitge
 export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBigTrade?: (t: FeedTrade) => void) => {
   const [bigTrades, setBigTrades] = useState<FeedTrade[]>([]);
   const [connected, setConnected] = useState<Record<FeedExchange, boolean>>({ bitget: false, binance: false, bybit: false, okx: false });
+  // 서버가 모아 둔 기간별 합계·최근 대형 체결 (페이지를 열자마자 기간이 채워져 있다)
+  const [server, setServer] = useState<FlowSnapshot | null>(null);
+  // 서버 체결과 실시간 체결이 겹치지 않도록 이미 넣은 체결을 기억한다
+  const seen = useRef<Set<string>>(new Set());
   const buckets = useRef<Record<FeedExchange, Bucket[]>>({ bitget: [], binance: [], bybit: [], okx: [] });
   const minRef = useRef(minUsd);
   const pausedRef = useRef(paused);
@@ -97,6 +106,8 @@ export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBi
 
   useEffect(() => {
     setBigTrades([]);
+    setServer(null);
+    seen.current = new Set();
     buckets.current = { bitget: [], binance: [], bybit: [], okx: [] };
     let seq = 0;
     let closed = false;
@@ -115,7 +126,9 @@ export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBi
       }
       if (t.side === 'buy') b.buy += t.usd; else b.sell += t.usd;
 
-      if (t.usd >= minRef.current && !pausedRef.current) {
+      const key = tradeKey(t);
+      if (t.usd >= minRef.current && !pausedRef.current && !seen.current.has(key)) {
+        seen.current.add(key);
         const trade: FeedTrade = { ...t, id: `${t.exchange}-${t.time}-${seq++}` };
         setBigTrades(prev => [trade, ...prev].slice(0, MAX_BIG));
         cbRef.current?.(trade);
@@ -147,15 +160,44 @@ export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBi
     };
     FEED_EXCHANGES.forEach(connect);
 
+    // 서버 집계: 3초마다 받는다. 대형 체결은 아직 없는 것만 목록에 보탠다 (알림음은 울리지 않음)
+    const pollServer = () => {
+      fetchFlow(coin)
+        .then(snap => {
+          if (closed) return;
+          setServer(snap);
+          if (pausedRef.current) return;
+          const fresh: FeedTrade[] = [];
+          snap.bigTrades.forEach(t => {
+            const key = tradeKey(t);
+            if (t.usd < minRef.current || seen.current.has(key)) return;
+            seen.current.add(key);
+            fresh.push({ ...t, id: `srv-${key}` });
+          });
+          if (fresh.length) {
+            setBigTrades(prev => [...prev, ...fresh].sort((a, b) => b.time - a.time).slice(0, MAX_BIG));
+          }
+        })
+        .catch(() => { /* 서버 집계가 없으면 브라우저 집계만 쓴다 */ });
+    };
+    pollServer();
+    const poll = setInterval(pollServer, 3000);
+
     return () => {
       closed = true;
+      clearInterval(poll);
       timers.forEach(clearTimeout);
       sockets.forEach(ws => ws.close());
     };
   }, [coin]);
 
-  /** 최근 windowMs 동안 거래소별 매수/매도 대금 */
-  const volume = (ex: FeedExchange, windowMs: number) => {
+  /**
+   * 최근 기간 동안 거래소별 매수/매도 대금.
+   * 서버 집계가 있으면 그것을 쓰고(페이지를 연 시점과 무관), 없으면 브라우저가 모은 값으로 계산한다.
+   */
+  const volume = (ex: FeedExchange, windowKey: string, windowMs: number) => {
+    const fromServer = server?.windows[windowKey]?.[ex];
+    if (fromServer) return fromServer;
     const since = Date.now() - windowMs;
     let buy = 0;
     let sell = 0;
@@ -165,5 +207,13 @@ export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBi
     return { buy, sell };
   };
 
-  return { bigTrades, connected, volume };
+  /** 이 기간을 다 채울 만큼 모였는지, 아니면 몇 분째 모으는 중인지 (null이면 다 참) */
+  const collectingMinutes = (ex: FeedExchange, windowMs: number): number | null => {
+    const since = server?.since[ex];
+    if (!server || !since) return null;
+    const elapsed = server.now - since;
+    return elapsed >= windowMs ? null : Math.floor(elapsed / 60_000);
+  };
+
+  return { bigTrades, connected, volume, collectingMinutes };
 };

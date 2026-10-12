@@ -27,6 +27,7 @@ import {
     LongShortExchange,
 } from '../service/marketService';
 import logger from '../log/logger';
+import { FLOW_COINS, FlowCoin, getFlow } from '../service/tradeAggregator';
 
 const SYMBOL_RE = /^[A-Za-z0-9^=._-]{1,20}$/;
 
@@ -206,4 +207,14 @@ export const series = async (req: Request, res: Response) => {
     } catch (err: any) {
         handleError(res, err, 'series');
     }
+};
+
+/**
+ * GET /api/market/flow?coin=BTC
+ * 서버가 모아 둔 거래소별 테이커 매수/매도 합계(기간별)와 최근 대형 체결
+ */
+export const flow = (req: Request, res: Response) => {
+    const coin = String(req.query.coin || 'BTC').toUpperCase();
+    if (!FLOW_COINS.includes(coin as FlowCoin)) return badRequest(res, `coin must be one of ${FLOW_COINS.join(', ')}`);
+    res.json(getFlow(coin as FlowCoin, parseLimit(req.query.limit, 100)));
 };
