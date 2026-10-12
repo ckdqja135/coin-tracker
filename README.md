@@ -31,3 +31,24 @@
     ```sh
     npm run dev
     ```
+
+## 시장 분석 웹 (coin-tracker-web)
+
+외부 거래소 공개 API(Binance, Upbit, Bithumb, Bybit, OKX, Yahoo Finance)를 사용하며 DB 없이도 동작합니다.
+
+```sh
+npm run dev                                  # API 서버 (3000)
+cd coin-tracker-web && PORT=3001 npm start   # 웹 (3001, /api는 3000으로 프록시)
+```
+
+| 경로 | 기능 |
+| --- | --- |
+| `/` | 임펄스 모니터: 코인 가격 + 미결제약정/롱숏비율/펀딩비/김치프리미엄 오버레이 |
+| `/compare` | 최대 6개 자산 비교 (선형/로그/%, 이동평균, CSV, 캡처, 내 차트 저장) |
+| `/btc`, `/eth` | 코인 요약 지표 + 캔들 차트 + 파생 지표 |
+| `/markets` | 암호화폐·지수·원자재·환율 캔들 차트 |
+| `/longs-shorts` | 거래소별 롱/숏 비율, 실시간 대규모 체결·청산 |
+| `/correlation` | 자산 간 상관계수, 삼각 히트맵 |
+| `/live` | 기존 소켓 기반 실시간 대시보드 (MariaDB 필요) |
+
+API: `/api/market/{klines,metric,longshort,premium,snapshot}`

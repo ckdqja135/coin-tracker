@@ -25,22 +25,24 @@ coinSocket(io);
 const PORT = process.env.PORT || 3000;
 const serverStartTime = new Date();
 
+// 시장 데이터 API(/api/market)는 DB 없이 동작하므로 DB 연결 여부와 무관하게 서버를 띄운다.
+server.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`);
+});
+
 AppDataSource.initialize().then(async () => {
     logger.info('Database connected');
 
     // 집계 타이머 등록
     registerAggregateTimers(serverStartTime);
 
-    server.listen(PORT, () => {
-        logger.info(`Server running on port ${PORT}`);
-        // 주기적인 데이터 수집 시작 코드 추가
-        try {
-            const coinIds = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
-            coinIds.forEach(coinId => {
-                startDataCollection(coinId, io);
-            });
-        } catch (err) {
-            logger.error(`Error fetching coin symbols: ${err instanceof Error ? err.message : String(err)}`);
-        }
-    });
-}).catch(error => logger.error('Error connecting to the database', error));
+    // 주기적인 데이터 수집 시작
+    try {
+        const coinIds = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+        coinIds.forEach(coinId => {
+            startDataCollection(coinId, io);
+        });
+    } catch (err) {
+        logger.error(`Error fetching coin symbols: ${err instanceof Error ? err.message : String(err)}`);
+    }
+}).catch(error => logger.error(`Error connecting to the database (history API disabled): ${error.message}`));
