@@ -85,20 +85,41 @@ http.interceptors.response.use(undefined, async err => {
 // ---------------------------------------------------------------------------
 const cache = new Map<string, { expires: number; value: Promise<any> }>();
 
-const cached = <T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> => {
+// 마지막으로 성공한 값. 외부 API가 잠시 막히거나(429 등) 실패해도 이 값을 대신 돌려준다.
+const lastGood = new Map<string, { value: any; at: number }>();
+const STALE_MAX_MS = 6 * 3600_000; // 이보다 오래된 값은 대신 쓰지 않는다
+const RETRY_AFTER_FAIL_MS = 15_000; // 실패 후 이 시간 동안은 외부에 다시 묻지 않는다
+const MAX_ENTRIES = 2000;
+
+const prune = (map: Map<string, any>, isStale: (v: any) => boolean) => {
+    if (map.size <= MAX_ENTRIES) return;
+    map.forEach((v, k) => { if (isStale(v)) map.delete(k); });
+};
+
+export const cached = <T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> => {
     const now = Date.now();
     const hit = cache.get(key);
     if (hit && hit.expires > now) return hit.value;
 
-    const value = loader().catch(err => {
-        cache.delete(key); // 실패한 요청은 캐시하지 않음
-        throw err;
-    });
+    const value = loader()
+        .then(v => {
+            lastGood.set(key, { value: v, at: Date.now() });
+            prune(lastGood, e => Date.now() - e.at > STALE_MAX_MS);
+            return v;
+        })
+        .catch(err => {
+            const prev = lastGood.get(key);
+            if (prev && Date.now() - prev.at <= STALE_MAX_MS) {
+                logger.warn(`[cache] upstream failed, serving last good value (${Math.round((Date.now() - prev.at) / 1000)}s old): ${key} - ${err.message}`);
+                // 막힌 외부 서버를 계속 두드리지 않도록 잠시 이전 값으로 고정
+                cache.set(key, { expires: Date.now() + RETRY_AFTER_FAIL_MS, value: Promise.resolve(prev.value) });
+                return prev.value as T;
+            }
+            cache.delete(key); // 대신 줄 값이 없으면 실패를 그대로 알린다
+            throw err;
+        });
     cache.set(key, { expires: now + ttlMs, value });
-
-    if (cache.size > 2000) {
-        cache.forEach((entry, k) => { if (entry.expires <= now) cache.delete(k); });
-    }
+    prune(cache, e => e.expires <= Date.now());
     return value;
 };
 

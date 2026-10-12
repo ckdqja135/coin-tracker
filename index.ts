@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { AppDataSource } from './config/data-source';
@@ -19,6 +21,15 @@ const io = new SocketIOServer(server);
 app.use(express.json());
 // REST API 라우터 설정 - 통합 라우터 사용
 app.use('/api', apiRoutes);
+
+// 배포용: 웹 빌드 결과(coin-tracker-web/build)가 있으면 화면도 이 서버가 함께 내려준다.
+// /api 외의 경로는 모두 index.html로 보내 React Router가 처리하게 한다.
+const WEB_BUILD = path.join(__dirname, 'coin-tracker-web', 'build');
+if (fs.existsSync(path.join(WEB_BUILD, 'index.html'))) {
+    app.use(express.static(WEB_BUILD, { index: false, maxAge: '1h' }));
+    app.get(/^(?!\/api\/|\/socket\.io\/).*/, (_req, res) => res.sendFile(path.join(WEB_BUILD, 'index.html')));
+    logger.info(`Serving web build from ${WEB_BUILD}`);
+}
 
 // 소켓 연결 설정
 coinSocket(io);
