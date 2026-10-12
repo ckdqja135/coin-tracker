@@ -1,49 +1,46 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, NavLink, useLocation } from 'react-router-dom';
 import {
-  AppBar, Autocomplete, Box, Button, Container, Drawer, IconButton, Link, List, ListItemButton, ListItemText,
-  Paper, Stack, TextField, Toolbar, Typography, ToggleButton, ToggleButtonGroup,
+  AppBar, Box, Button, Container, Drawer, IconButton, Link, List, ListItemButton, ListItemText,
+  MenuItem, Paper, Select, Stack, Toolbar, Tooltip, Typography,
 } from '@mui/material';
 import { useI18n, TKey } from '../i18n';
-import { ASSETS, Asset } from '../lib/assets';
 import { storage } from '../lib/chartUtils';
+import { useThemeMode } from '../lib/themeMode';
+import TickerBar from './TickerBar';
 
+// 헤더 메뉴 (로고가 홈 링크 역할)
 export const NAV: { to: string; key: TKey }[] = [
-  { to: '/', key: 'nav.home' },
-  { to: '/compare', key: 'nav.compare' },
   { to: '/btc', key: 'nav.btc' },
   { to: '/eth', key: 'nav.eth' },
   { to: '/markets', key: 'nav.markets' },
+  { to: '/compare', key: 'nav.compare' },
   { to: '/longs-shorts', key: 'nav.longshort' },
   { to: '/correlation', key: 'nav.correlation' },
   { to: '/blog', key: 'nav.blog' },
+  { to: '/calendar', key: 'nav.calendar' },
 ];
-
-const MarketSearch: React.FC = () => {
-  const { t } = useI18n();
-  const navigate = useNavigate();
-  return (
-    <Autocomplete<Asset>
-      size="small"
-      options={ASSETS}
-      getOptionLabel={a => `${a.short} · ${a.name}`}
-      noOptionsText={t('search.empty')}
-      onChange={(_, a) => a && navigate(`/markets?asset=${a.id}`)}
-      blurOnSelect
-      clearOnBlur
-      sx={{ width: { xs: '100%', md: 220 } }}
-      renderInput={params => <TextField {...params} placeholder={`🔍 ${t('search.placeholder')}`} />}
-    />
-  );
-};
 
 const LangToggle: React.FC = () => {
   const { lang, setLang } = useI18n();
   return (
-    <ToggleButtonGroup size="small" exclusive value={lang} onChange={(_, v) => v && setLang(v)}>
-      <ToggleButton value="en" sx={{ px: 1, py: 0.3, fontSize: 12 }}>EN</ToggleButton>
-      <ToggleButton value="ko" sx={{ px: 1, py: 0.3, fontSize: 12 }}>KO</ToggleButton>
-    </ToggleButtonGroup>
+    <Select size="small" value={lang} onChange={e => setLang(e.target.value as 'en' | 'ko')} variant="standard" disableUnderline
+      sx={{ bgcolor: '#16191f', color: '#fff', borderRadius: 99, px: 1.5, fontSize: 12, fontWeight: 700, '& .MuiSvgIcon-root': { color: '#fff' } }}>
+      <MenuItem value="en">EN</MenuItem>
+      <MenuItem value="ko">KO</MenuItem>
+    </Select>
+  );
+};
+
+const ThemeToggle: React.FC = () => {
+  const { t } = useI18n();
+  const { mode, toggle } = useThemeMode();
+  return (
+    <Tooltip title={t('theme.toggle')}>
+      <IconButton size="small" onClick={toggle} sx={{ color: '#fff', fontSize: 16 }} aria-label={t('theme.toggle')}>
+        {mode === 'dark' ? '☀' : '☾'}
+      </IconButton>
+    </Tooltip>
   );
 };
 
@@ -52,31 +49,30 @@ const Header: React.FC = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'rgba(11,14,20,0.92)', backdropFilter: 'blur(8px)', borderBottom: '1px solid #1d2430' }}>
-      <Container maxWidth="xl">
+    <AppBar position="sticky" elevation={0} sx={{ bgcolor: '#2a2d33', color: '#fff' }}>
+      <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 56 } }}>
-          <IconButton sx={{ display: { md: 'none' } }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
+          <IconButton sx={{ display: { md: 'none' }, color: '#fff' }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
           <Typography component={RouterLink} to="/" variant="h6"
             sx={{ fontWeight: 800, color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: -0.5 }}>
-            <Box component="span" sx={{ color: '#f7931a' }}>◆</Box> Coin Tracker
+            <Box component="span" sx={{ bgcolor: '#fff', color: '#2a2d33', borderRadius: 1, px: 0.5, mr: 0.8, fontSize: 15 }}>◆</Box>Coin Tracker
           </Typography>
-          <Stack direction="row" sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 1 }}>
+          <Stack direction="row" justifyContent="center" sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 1 }}>
             {NAV.map(n => (
-              <Button key={n.to} component={NavLink} to={n.to} end={n.to === '/'} color="inherit"
-                sx={{ fontSize: 13, color: '#aeb7c4', '&.active': { color: '#fff', fontWeight: 700 } }}>
+              <Button key={n.to} component={NavLink} to={n.to} color="inherit"
+                sx={{ fontSize: 13, fontWeight: 500, color: '#fff', px: 1.3, '&.active': { color: '#7fa4ff' } }}>
                 {t(n.key)}
               </Button>
             ))}
           </Stack>
           <Box sx={{ flexGrow: { xs: 1, md: 0 } }} />
-          <Box sx={{ display: { xs: 'none', md: 'block' } }}><MarketSearch /></Box>
           <LangToggle />
+          <ThemeToggle />
         </Toolbar>
       </Container>
 
       <Drawer open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: 260, p: 2 }}>
-          <MarketSearch />
           <List>
             {NAV.map(n => (
               <ListItemButton key={n.to} component={NavLink} to={n.to} onClick={() => setOpen(false)}>
@@ -86,39 +82,40 @@ const Header: React.FC = () => {
           </List>
         </Box>
       </Drawer>
+      <TickerBar />
     </AppBar>
   );
 };
 
-const Footer: React.FC = () => {
+const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
   const { t } = useI18n();
   const col = (title: string, links: { to: string; label: string }[]) => (
     <Box>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>{title}</Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#9aa6c4' }}>{title}</Typography>
       <Stack spacing={0.5}>
         {links.map(l => (
-          <Link key={l.to + l.label} component={RouterLink} to={l.to} color="text.secondary" underline="hover" fontSize={13}>{l.label}</Link>
+          <Link key={l.to + l.label} component={RouterLink} to={l.to} color="#e6e8ec" underline="hover" fontSize={13}>{l.label}</Link>
         ))}
       </Stack>
     </Box>
   );
 
   return (
-    <Box component="footer" sx={{ borderTop: '1px solid #1d2430', mt: 4, py: 4, bgcolor: '#0b0e14' }}>
-      <Container maxWidth="xl">
+    <Box component="footer" sx={{ mt: full ? 0 : 8, py: 4, bgcolor: '#2a2d33', color: '#fff' }}>
+      <Container maxWidth="lg">
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={6}>
           <Box sx={{ maxWidth: 320 }}>
-            <Typography sx={{ fontWeight: 800 }}><Box component="span" sx={{ color: '#f7931a' }}>◆</Box> Coin Tracker</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{t('footer.disclaimer')}</Typography>
+            <Typography sx={{ fontWeight: 800 }}><Box component="span" sx={{ bgcolor: '#3d6cf4', borderRadius: 1, px: 0.5, mr: 0.8 }}>◆</Box>Coin Tracker</Typography>
+            <Typography variant="body2" sx={{ mt: 1, color: '#9aa1ad' }}>{t('footer.disclaimer')}</Typography>
           </Box>
           {col(t('footer.company'), [
             { to: '/about', label: t('nav.about') },
             { to: '/policy', label: t('nav.policy') },
             { to: '/about#contact', label: t('nav.contact') },
           ])}
-          {col(t('footer.service'), [...NAV.slice(1), { to: '/live', key: 'nav.live' as TKey }].map(n => ({ to: n.to, label: t(n.key) })))}
+          {col(t('footer.service'), [...NAV, { to: '/live', key: 'nav.live' as TKey }].map(n => ({ to: n.to, label: t(n.key) })))}
         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3 }}>
+        <Typography variant="caption" sx={{ display: 'block', mt: 3, color: '#9aa1ad' }}>
           © {new Date().getFullYear()} Coin Tracker
         </Typography>
       </Container>
@@ -139,13 +136,22 @@ const CookieBanner: React.FC = () => {
   );
 };
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-    <Header />
-    <Container maxWidth="xl" component="main" sx={{ flexGrow: 1, py: 3 }}>{children}</Container>
-    <Footer />
-    <CookieBanner />
-  </Box>
-);
+// 왼쪽 사이드바가 화면 끝까지 붙는 페이지
+const FULL_WIDTH = ['/btc', '/eth', '/markets', '/compare'];
+
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { pathname } = useLocation();
+  const full = FULL_WIDTH.includes(pathname);
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Header />
+      {full
+        ? <Box component="main" sx={{ flexGrow: 1 }}>{children}</Box>
+        : <Container maxWidth="lg" component="main" sx={{ flexGrow: 1, py: 3 }}>{children}</Container>}
+      <Footer full={full} />
+      <CookieBanner />
+    </Box>
+  );
+};
 
 export default Layout;

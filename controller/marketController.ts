@@ -6,6 +6,16 @@ import {
     getLongShortPeriods,
     getPremium,
     getSnapshot,
+    getTickers,
+    getUsdKrw,
+    getCoinList,
+    getOverview,
+    getCoinInfo,
+    TICKER_EXCHANGES,
+    TickerExchange,
+    getSeries,
+    SERIES_KINDS,
+    SeriesKind,
     INTERVALS,
     KLINE_SOURCES,
     METRIC_TYPES,
@@ -114,5 +124,76 @@ export const snapshot = async (req: Request, res: Response) => {
         res.json(await getSnapshot(coin));
     } catch (err: any) {
         handleError(res, err, 'snapshot');
+    }
+};
+
+/**
+ * GET /api/market/tickers?exchange=upbit&coins=BTC,ETH
+ */
+export const tickers = async (req: Request, res: Response) => {
+    const exchange = String(req.query.exchange || '');
+    if (!TICKER_EXCHANGES.includes(exchange as TickerExchange)) {
+        return badRequest(res, `exchange must be one of ${TICKER_EXCHANGES.join(', ')}`);
+    }
+    try {
+        const [all, usdKrw] = await Promise.all([getTickers(exchange as TickerExchange), getUsdKrw().catch(() => null)]);
+        // coins=BTC,ETH 로 필요한 코인만 받을 수 있다 (게이트는 2천 개가 넘음)
+        const filter = String(req.query.coins || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+        const data = filter.length
+            ? Object.fromEntries(filter.filter(c => all.data[c]).map(c => [c, all.data[c]]))
+            : all.data;
+        res.json({ ...all, data, usdKrw });
+    } catch (err: any) {
+        handleError(res, err, 'tickers');
+    }
+};
+
+/**
+ * GET /api/market/coins
+ */
+export const coins = async (_req: Request, res: Response) => {
+    try {
+        res.json(await getCoinList());
+    } catch (err: any) {
+        handleError(res, err, 'coins');
+    }
+};
+
+/**
+ * GET /api/market/overview
+ */
+export const overview = async (_req: Request, res: Response) => {
+    try {
+        res.json(await getOverview());
+    } catch (err: any) {
+        handleError(res, err, 'overview');
+    }
+};
+
+/**
+ * GET /api/market/coininfo?symbols=BTC,ETH
+ */
+export const coinInfo = async (req: Request, res: Response) => {
+    const symbols = String(req.query.symbols || '').split(',').map(s => s.trim()).filter(s => SYMBOL_RE.test(s));
+    if (symbols.length === 0) return badRequest(res, 'symbols is required');
+    try {
+        res.json(await getCoinInfo(symbols));
+    } catch (err: any) {
+        handleError(res, err, 'coininfo');
+    }
+};
+
+/**
+ * GET /api/market/series?kind=oi-bybit&coin=BTC&interval=1h&limit=200
+ */
+export const series = async (req: Request, res: Response) => {
+    const { kind, coin = 'BTC', interval = '1h' } = req.query as Record<string, string>;
+    if (!SERIES_KINDS.includes(kind as SeriesKind)) return badRequest(res, `kind must be one of ${SERIES_KINDS.join(', ')}`);
+    if (!SYMBOL_RE.test(coin)) return badRequest(res, 'invalid coin');
+    if (!INTERVALS.includes(interval as Interval)) return badRequest(res, `interval must be one of ${INTERVALS.join(', ')}`);
+    try {
+        res.json({ kind, coin, interval, data: await getSeries(kind as SeriesKind, coin.toUpperCase(), interval as Interval, parseLimit(req.query.limit, 300)) });
+    } catch (err: any) {
+        handleError(res, err, 'series');
     }
 };

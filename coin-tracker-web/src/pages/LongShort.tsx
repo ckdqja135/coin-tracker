@@ -1,120 +1,56 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box, Button, ButtonGroup, Chip, LinearProgress, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs,
-  ToggleButton, ToggleButtonGroup, Typography,
-} from '@mui/material';
-import Highcharts from 'highcharts/highstock';
-import StockChart, { baseOptions, yAxis } from '../components/StockChart';
-import { ChartState, PageHeader, Panel } from '../components/Panel';
+import React, { useEffect, useRef, useState } from 'react';
+import { Box, Button, IconButton, Menu, MenuItem, Select, Stack, Tooltip, Typography } from '@mui/material';
 import { useI18n } from '../i18n';
-import { fmtCompact, fmtPrice } from '../lib/chartUtils';
+import { fmtCompact } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
-import { LongShortExchange, fetchLongShort } from '../services/market';
+import { FEED_EXCHANGES, FeedExchange, FeedTrade, useTradeFeed } from '../lib/useTradeFeed';
+import { fetchTickers } from '../services/market';
 
-const COINS = ['BTC', 'ETH'] as const;
-const EXCHANGES: { id: LongShortExchange; label: string }[] = [
-  { id: 'binance', label: 'Binance' },
-  { id: 'bybit', label: 'Bybit' },
-  { id: 'okx', label: 'OKX' },
-];
-// 서버의 거래소별 지원 period와 동일하게 유지
-const PERIODS: Record<LongShortExchange, string[]> = {
-  binance: ['5m', '15m', '30m', '1h', '2h', '4h', '12h', '1d'],
-  bybit: ['5m', '15m', '30m', '1h', '4h', '1d'],
-  okx: ['5m', '1h', '1d'],
+const COINS = [{ id: 'BTC', name: 'Bitcoin' }, { id: 'ETH', name: 'Ethereum' }] as const;
+const LONG = '#4dbf9a';
+const SHORT = '#e06666';
+const CARD = '#1f2024';
+const EX_META: Record<FeedExchange, { label: string; color: string }> = {
+  binance: { label: 'Binance', color: '#f0b90b' },
+  bybit: { label: 'Bybit', color: '#f7a600' },
+  okx: { label: 'OKX', color: '#3d6cf4' },
+  bitget: { label: 'Bitget', color: '#00c4b3' },
 };
+const WINDOWS = [
+  { key: '5m', ms: 5 * 60_000 },
+  { key: '15m', ms: 15 * 60_000 },
+  { key: '30m', ms: 30 * 60_000 },
+  { key: '1h', ms: 3600_000 },
+  { key: '4h', ms: 4 * 3600_000 },
+];
+const THRESHOLDS = [100_000, 1_000_000, 10_000_000];
 
-const LONG = '#26a69a';
-const SHORT = '#ef5350';
+/** 체결 규모 단계 (물방울 개수) */
+const tier = (usd: number) => (usd >= 10_000_000 ? 3 : usd >= 1_000_000 ? 2 : 1);
 
-const RatioBar: React.FC<{ label: string; long?: number; short?: number }> = ({ label, long, short }) => (
-  <Box sx={{ mb: 1.5 }}>
-    <Stack direction="row" justifyContent="space-between">
-      <Typography variant="body2" sx={{ fontWeight: 700 }}>{label}</Typography>
-      <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: LONG }}>{long != null ? (long * 100).toFixed(1) : '-'}%</span>
-        {' / '}
-        <span style={{ color: SHORT }}>{short != null ? (short * 100).toFixed(1) : '-'}%</span>
-        {long != null && short ? ` · ${(long / short).toFixed(2)}` : ''}
-      </Typography>
-    </Stack>
-    <LinearProgress variant="determinate" value={(long ?? 0.5) * 100}
-      sx={{ height: 8, borderRadius: 4, bgcolor: SHORT, '& .MuiLinearProgress-bar': { bgcolor: LONG } }} />
+const Drops: React.FC<{ usd: number; color: string }> = ({ usd, color }) => (
+  <Stack direction="row" gap={0.4}>
+    {[1, 2, 3].map(i => (
+      <Box key={i} sx={{ width: 7, height: 10, bgcolor: i <= tier(usd) ? color : '#c9ccd2', borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%' }} />
+    ))}
+  </Stack>
+);
+
+const SizeBadge: React.FC<{ usd: number; side: 'buy' | 'sell' }> = ({ usd, side }) => (
+  <Box sx={{
+    bgcolor: side === 'buy' ? '#3f9b6c' : '#d35b5b', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 0.5,
+    px: 0.8, py: 0.2, width: 78, flexShrink: 0, display: 'flex', justifyContent: 'space-between', fontVariantNumeric: 'tabular-nums',
+  }}>
+    <span>$</span><span>{fmtCompact(usd)}</span>
   </Box>
 );
 
-// ---------------------------------------------------------------------------
-// 실시간 대규모 체결 / 청산 (바이낸스 선물 웹소켓)
-// ---------------------------------------------------------------------------
-interface TradeRow {
-  id: string;
-  kind: 'trade' | 'liquidation';
-  side: 'buy' | 'sell';
-  price: number;
-  qty: number;
-  usd: number;
-  time: number;
-}
-
-const THRESHOLDS = [
-  { key: 'ls.filter.base', min: 100_000 },
-  { key: 'ls.filter.significant', min: 1_000_000 },
-  { key: 'ls.filter.huge', min: 10_000_000 },
-] as const;
-
-const MAX_ROWS = 60;
-
-const useWhaleFeed = (coin: string) => {
-  const [rows, setRows] = useState<TradeRow[]>([]);
-  const [connected, setConnected] = useState(false);
-
-  useEffect(() => {
-    setRows([]);
-    const sym = `${coin.toLowerCase()}usdt`;
-    let ws: WebSocket | null = null;
-    let retry: ReturnType<typeof setTimeout> | undefined;
-    let closed = false;
-
-    const connect = () => {
-      ws = new WebSocket(`wss://fstream.binance.com/market/stream?streams=${sym}@aggTrade/${sym}@forceOrder`);
-      ws.onopen = () => setConnected(true);
-      ws.onclose = () => {
-        setConnected(false);
-        if (!closed) retry = setTimeout(connect, 3000);
-      };
-      ws.onmessage = ev => {
-        const { data } = JSON.parse(ev.data);
-        let row: TradeRow | null = null;
-        if (data.e === 'aggTrade') {
-          const price = +data.p;
-          const qty = +data.q;
-          const usd = price * qty;
-          if (usd < THRESHOLDS[0].min) return;
-          // m=true: 매수자가 메이커 -> 테이커 매도
-          row = { id: `t${data.a}`, kind: 'trade', side: data.m ? 'sell' : 'buy', price, qty, usd, time: data.T };
-        } else if (data.e === 'forceOrder') {
-          const o = data.o;
-          const price = +o.ap || +o.p;
-          const qty = +o.z || +o.q;
-          // SELL 청산 주문 = 롱 포지션 청산
-          row = { id: `l${o.T}${o.S}${qty}`, kind: 'liquidation', side: o.S === 'BUY' ? 'buy' : 'sell', price, qty, usd: price * qty, time: o.T };
-        }
-        if (row) {
-          const r = row;
-          setRows(prev => [r, ...prev].slice(0, MAX_ROWS * 4));
-        }
-      };
-    };
-    connect();
-
-    return () => {
-      closed = true;
-      if (retry) clearTimeout(retry);
-      ws?.close();
-    };
-  }, [coin]);
-
-  return { rows, connected };
+const age = (now: number, t: number) => {
+  const s = Math.max(0, Math.floor((now - t) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
 };
 
 const useNow = (ms: number) => {
@@ -126,147 +62,200 @@ const useNow = (ms: number) => {
   return now;
 };
 
-const age = (now: number, t: number) => {
-  const s = Math.max(0, Math.floor((now - t) / 1000));
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  return `${Math.floor(s / 3600)}h`;
-};
-
-const WhaleFeed: React.FC<{ coin: string }> = ({ coin }) => {
-  const { t } = useI18n();
-  const { rows, connected } = useWhaleFeed(coin);
-  const [minUsd, setMinUsd] = useState<number>(THRESHOLDS[0].min);
-  const [kinds, setKinds] = useState<string[]>(['trade', 'liquidation']);
-  const now = useNow(1000);
-  const visible = rows.filter(r => r.usd >= minUsd && kinds.includes(r.kind)).slice(0, MAX_ROWS);
-  // 체결: buy = 롱 진입 성격, 청산: SELL 주문 = 롱 청산
-  const isLongColor = (r: TradeRow) => (r.kind === 'trade' ? r.side === 'buy' : r.side === 'buy');
-
+/** 롱 비중을 원호로 보여주는 게이지 */
+const Gauge: React.FC<{ longShare: number | null; net: number; unit: string }> = ({ longShare, net, unit }) => {
+  const r = 32;
+  const c = 2 * Math.PI * r;
+  const share = longShare ?? 0.5;
+  const isLong = net >= 0;
+  const color = isLong ? LONG : SHORT;
   return (
-    <Panel
-      title={t('ls.whales')}
-      actions={<Chip size="small" label={connected ? `● ${t('ls.connected')}` : t('ls.disconnected')} color={connected ? 'success' : 'default'} variant="outlined" />}
-    >
-      <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1 }}>
-        <ButtonGroup size="small" color="inherit">
-          {THRESHOLDS.map(th => (
-            <Button key={th.key} variant={minUsd === th.min ? 'contained' : 'outlined'} color={minUsd === th.min ? 'primary' : 'inherit'}
-              onClick={() => setMinUsd(th.min)} sx={{ fontSize: 12 }}>{t(th.key)}</Button>
-          ))}
-        </ButtonGroup>
-        <ToggleButtonGroup size="small" value={kinds} onChange={(_, v) => v.length && setKinds(v)}>
-          <ToggleButton value="trade" sx={{ fontSize: 12, py: 0.3 }}>{t('ls.showTrades')}</ToggleButton>
-          <ToggleButton value="liquidation" sx={{ fontSize: 12, py: 0.3 }}>{t('ls.showLiq')}</ToggleButton>
-        </ToggleButtonGroup>
-      </Stack>
-      <Box sx={{ maxHeight: 520, overflow: 'auto' }}>
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('ls.col.side')}</TableCell>
-              <TableCell align="right">{t('ls.col.price')}</TableCell>
-              <TableCell align="right">{t('ls.col.size')}</TableCell>
-              <TableCell align="right">{t('ls.col.qty')}</TableCell>
-              <TableCell align="right">{t('ls.col.age')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {visible.length === 0 && (
-              <TableRow><TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 4 }}>{t('ls.waiting')}</TableCell></TableRow>
-            )}
-            {visible.map(r => {
-              const color = isLongColor(r) ? LONG : SHORT;
-              const label = r.kind === 'trade'
-                ? (r.side === 'buy' ? t('common.long') : t('common.short'))
-                : `${r.side === 'sell' ? t('common.long') : t('common.short')} ${t('ls.liquidation')}`;
-              return (
-                <TableRow key={r.id} sx={{ bgcolor: r.usd >= 1_000_000 ? `${color}22` : undefined }}>
-                  <TableCell sx={{ color, fontWeight: 700 }}>{r.kind === 'liquidation' ? '💥 ' : ''}{label}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPrice(r.price)}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>${fmtCompact(r.usd)}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{r.qty.toLocaleString('en-US', { maximumFractionDigits: 3 })}</TableCell>
-                  <TableCell align="right" sx={{ color: 'text.secondary' }}>{age(now, r.time)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+    <Box sx={{ position: 'relative', width: 84, height: 84 }}>
+      <svg width="84" height="84" viewBox="0 0 84 84">
+        <circle cx="42" cy="42" r={r + 6} fill="#111214" stroke={color} strokeOpacity={0.25} strokeWidth={1} />
+        <circle cx="42" cy="42" r={r} fill="none" stroke={SHORT} strokeWidth={4} strokeDasharray={`${c * (1 - share)} ${c}`}
+          transform={`rotate(${-90 + share * 360} 42 42)`} strokeLinecap="round" />
+        <circle cx="42" cy="42" r={r} fill="none" stroke={LONG} strokeWidth={4} strokeDasharray={`${c * share} ${c}`}
+          transform="rotate(-90 42 42)" strokeLinecap="round" />
+      </svg>
+      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color }}>
+        <Typography sx={{ fontSize: 10, lineHeight: 1 }}>{isLong ? '↗' : '↘'}</Typography>
+        <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }}>{isLong ? 'Long' : 'Short'}</Typography>
+        <Typography sx={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{unit}{fmtCompact(Math.abs(net)).replace('.00', '')}</Typography>
       </Box>
-    </Panel>
+    </Box>
   );
 };
 
-// ---------------------------------------------------------------------------
-// 페이지
-// ---------------------------------------------------------------------------
+const ExchangeCard: React.FC<{
+  ex: FeedExchange; coin: string; trades: FeedTrade[]; now: number;
+  volume: (ex: FeedExchange, ms: number) => { buy: number; sell: number };
+}> = ({ ex, coin, trades, now, volume }) => {
+  const [win, setWin] = useState(WINDOWS[0]);
+  const [inCoin, setInCoin] = useState(false);
+  const meta = EX_META[ex];
+  const { buy, sell } = volume(ex, win.ms);
+  const total = buy + sell;
+  const price = trades[0]?.price;
+  // USD <-> 코인 수량 전환 (최근 체결가 기준 환산)
+  const conv = (usd: number) => (inCoin && price ? usd / price : usd);
+  const fmtAmt = (usd: number) => Math.round(conv(usd)).toLocaleString('en-US');
+  const recent = trades.filter(t => t.exchange === ex).slice(0, 3);
+
+  return (
+    <Box sx={{ bgcolor: CARD, color: '#fff', borderRadius: 1.5, position: 'relative', mb: 3, border: '1px solid #2c2e33' }}>
+      <Select size="small" value={win.key} onChange={e => setWin(WINDOWS.find(w => w.key === e.target.value)!)} variant="standard" disableUnderline
+        sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#111214', color: '#fff', fontSize: 11, px: 1, borderBottomLeftRadius: 6, '& .MuiSvgIcon-root': { color: '#fff', fontSize: 14 } }}>
+        {WINDOWS.map(w => <MenuItem key={w.key} value={w.key} sx={{ fontSize: 12 }}>{w.key}</MenuItem>)}
+      </Select>
+      <Box sx={{ p: 2 }}>
+        <Stack direction="row" alignItems="center" gap={0.8}>
+          <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: meta.color }} />
+          <Typography sx={{ fontWeight: 800, fontSize: 13 }}>{meta.label}</Typography>
+        </Stack>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: -0.5 }}>
+          <Box sx={{ mt: 4 }}>
+            <Typography sx={{ fontSize: 11 }}>Long</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: LONG }}>{total ? ((buy / total) * 100).toFixed(2) : '0.00'}%</Typography>
+            <Typography sx={{ fontSize: 11, color: LONG }}>{fmtAmt(buy)}</Typography>
+          </Box>
+          <Gauge longShare={total ? buy / total : null} net={conv(buy - sell)} unit={inCoin ? '' : ''} />
+          <Box sx={{ mt: 4, textAlign: 'right' }}>
+            <Typography sx={{ fontSize: 11 }}>Short</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: SHORT }}>{total ? ((sell / total) * 100).toFixed(2) : '0.00'}%</Typography>
+            <Typography sx={{ fontSize: 11, color: SHORT }}>{fmtAmt(sell)}</Typography>
+          </Box>
+        </Stack>
+      </Box>
+      <Box sx={{ borderTop: '1px solid #2c2e33', mx: 2 }} />
+      <Box sx={{ p: 2, pt: 1.5 }}>
+        <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+          <Button size="small" onClick={() => setInCoin(v => !v)}
+            sx={{ bgcolor: '#1d2a4a', color: '#6f9cff', fontSize: 10, minWidth: 0, px: 1, py: 0.2 }}>{inCoin ? coin : 'USD'} ⇄</Button>
+        </Stack>
+        {recent.map(t => (
+          <Stack key={t.id} direction="row" alignItems="center" gap={1.5} sx={{ py: 0.4, fontSize: 11 }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, width: 80, fontVariantNumeric: 'tabular-nums' }}>$ {t.price.toFixed(2)}</Typography>
+            <SizeBadge usd={t.usd} side={t.side} />
+            <Drops usd={t.usd} color={t.side === 'buy' ? LONG : SHORT} />
+            <Typography sx={{ fontSize: 11, color: '#9aa1ad', ml: 'auto' }}>{age(now, t.time)}</Typography>
+          </Stack>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
+// 새 대형 체결 알림음
+const beep = (() => {
+  let ctx: AudioContext | null = null;
+  return (up: boolean) => {
+    try {
+      ctx = ctx ?? new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = up ? 880 : 440;
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch { /* 오디오 미지원 */ }
+  };
+})();
+
 const LongShort: React.FC = () => {
   const { t } = useI18n();
   const [coin, setCoin] = useState<string>('BTC');
-  const [exchange, setExchange] = useState<LongShortExchange>('binance');
-  const [period, setPeriod] = useState('1h');
-  const p = PERIODS[exchange].includes(period) ? period : '1h';
+  const [minUsd, setMinUsd] = useState(THRESHOLDS[0]);
+  const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [menuEl, setMenuEl] = useState<HTMLElement | null>(null);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
-  const history = useAsync(() => fetchLongShort(exchange, coin, p, 100), [exchange, coin, p], 60_000);
-  const current = useAsync(
-    () => Promise.all(EXCHANGES.map(e => fetchLongShort(e.id, coin, '5m', 1).then(r => r.data[r.data.length - 1]).catch(() => undefined))),
-    [coin], 60_000,
-  );
+  const { bigTrades, connected, volume } = useTradeFeed(coin, minUsd, paused, tr => { if (!mutedRef.current) beep(tr.side === 'buy'); });
+  const now = useNow(1000);
+  const ticker = useAsync(() => fetchTickers('binance', [coin]), [coin], 3000);
+  const tk = ticker.data?.data[coin];
+  const chgAbs = tk && tk.change24h != null ? tk.price - tk.price / (1 + tk.change24h / 100) : null;
+  const coinName = COINS.find(c => c.id === coin)!.name;
 
-  const chartRef = useRef(null);
-  const options = useMemo<Highcharts.Options>(() => {
-    const base = baseOptions();
-    const data = history.data?.data ?? [];
-    return {
-      ...base,
-      chart: { ...base.chart, height: 420 },
-      navigator: { enabled: false },
-      yAxis: [
-        yAxis({ max: 100, min: 0, labels: { format: '{value}%', align: 'left', x: 6, style: { color: '#9aa4b2' } }, height: '100%' }),
-        yAxis({ opposite: false, labels: { align: 'right', x: -6, style: { color: '#ffca28' } }, gridLineWidth: 0 }),
-      ],
-      plotOptions: { ...base.plotOptions, column: { stacking: 'normal', borderWidth: 0, pointPadding: 0.05, groupPadding: 0 } },
-      tooltip: { ...base.tooltip, valueDecimals: 2 },
-      series: [
-        { type: 'column', name: t('common.short'), data: data.map(d => [d.t, d.short * 100]), color: SHORT, tooltip: { valueSuffix: '%' } },
-        { type: 'column', name: t('common.long'), data: data.map(d => [d.t, d.long * 100]), color: LONG, tooltip: { valueSuffix: '%' } },
-        { type: 'line', name: t('common.ratio'), data: data.map(d => [d.t, d.ratio]), color: '#ffca28', yAxis: 1, lineWidth: 2 },
-      ],
-    };
-  }, [history.data, t]);
+  const roundBtn = { width: 32, height: 32, border: 1, borderColor: 'text.secondary', color: 'text.primary', fontSize: 13 };
 
   return (
-    <>
-      <PageHeader title={t('ls.title')} desc={t('ls.desc')} />
-      <Tabs value={coin} onChange={(_, v) => setCoin(v)} sx={{ mb: 2 }}>
-        {COINS.map(c => <Tab key={c} value={c} label={c === 'BTC' ? 'Bitcoin' : 'Ethereum'} />)}
-      </Tabs>
+    <Box>
+      <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 2.5 }}>{t('ls.title')}</Typography>
+      <Stack direction="row" gap={1} sx={{ mb: 3 }}>
+        {COINS.map(c => (
+          <Button key={c.id} onClick={() => setCoin(c.id)}
+            sx={{ borderRadius: 99, px: 2, py: 0.6, fontSize: 13, fontWeight: 700, bgcolor: coin === c.id ? '#3d6cf4' : '#23262d', color: '#fff', '&:hover': { bgcolor: coin === c.id ? '#3159d6' : '#33363d' } }}>
+            {c.name}
+          </Button>
+        ))}
+      </Stack>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 2, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '300px 1fr' }, gap: 3, alignItems: 'start' }}>
         <Box>
-          <Panel title={t('ls.current')}>
-            {EXCHANGES.map((e, i) => <RatioBar key={e.id} label={e.label} long={current.data?.[i]?.long} short={current.data?.[i]?.short} />)}
-          </Panel>
-          <Panel title={t('ls.ratioHistory')}>
-            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1 }}>
-              <ToggleButtonGroup size="small" exclusive value={exchange} onChange={(_, v) => v && setExchange(v)}>
-                {EXCHANGES.map(e => <ToggleButton key={e.id} value={e.id} sx={{ fontSize: 12, py: 0.3 }}>{e.label}</ToggleButton>)}
-              </ToggleButtonGroup>
-              <ButtonGroup size="small" color="inherit">
-                {PERIODS[exchange].map(x => (
-                  <Button key={x} variant={x === p ? 'contained' : 'outlined'} color={x === p ? 'primary' : 'inherit'}
-                    onClick={() => setPeriod(x)} sx={{ minWidth: 0, px: 1, fontSize: 12 }}>{x}</Button>
-                ))}
-              </ButtonGroup>
-            </Stack>
-            <ChartState loading={history.loading} error={history.error} height={420}>
-              <StockChart ref={chartRef} options={options} />
-            </ChartState>
-          </Panel>
+          {FEED_EXCHANGES.map(ex => (
+            <ExchangeCard key={ex} ex={ex} coin={coin} trades={bigTrades} now={now} volume={volume} />
+          ))}
         </Box>
-        <WhaleFeed coin={coin} />
+
+        <Box sx={{ border: 1, borderColor: 'text.secondary', borderRadius: 0.5, p: 2, minHeight: 600 }}>
+          <Stack direction="row" alignItems="center" gap={1} sx={{ pb: 2, borderBottom: 1, borderColor: 'text.secondary' }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 800, flexGrow: 1 }}>{t('ls.significant')}</Typography>
+            <Tooltip title={muted ? t('ls.unmute') : t('ls.mute')}>
+              <IconButton size="small" sx={roundBtn} onClick={() => setMuted(m => !m)}>{muted ? '🔇' : '🔊'}</IconButton>
+            </Tooltip>
+            <Tooltip title={paused ? t('ls.resume') : t('ls.pause')}>
+              <IconButton size="small" sx={roundBtn} onClick={() => setPaused(p => !p)}>{paused ? '▶' : '❚❚'}</IconButton>
+            </Tooltip>
+            <Tooltip title={t('ls.settings')}>
+              <IconButton size="small" sx={roundBtn} onClick={e => setMenuEl(e.currentTarget)}>⚙</IconButton>
+            </Tooltip>
+            <Menu anchorEl={menuEl} open={!!menuEl} onClose={() => setMenuEl(null)}>
+              {THRESHOLDS.map(th => (
+                <MenuItem key={th} selected={th === minUsd} onClick={() => { setMinUsd(th); setMenuEl(null); }}>
+                  {t('ls.minSize')} ${fmtCompact(th)}
+                </MenuItem>
+              ))}
+            </Menu>
+          </Stack>
+
+          <Stack direction="row" alignItems="center" sx={{ bgcolor: '#1f2024', color: '#fff', borderRadius: 0.5, px: 1.5, py: 1, mt: 1.5, mb: 1 }}>
+            <Box sx={{ width: 18, height: 18, borderRadius: '50%', bgcolor: '#f7931a', mr: 1 }} />
+            <Typography sx={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{coinName}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 16, flex: 1, textAlign: 'center' }}>
+              {tk ? `$ ${tk.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '-'}
+            </Typography>
+            <Typography sx={{ fontSize: 11, flex: 1, textAlign: 'right', color: (tk?.change24h ?? 0) >= 0 ? '#fff' : SHORT }}>
+              {chgAbs != null ? `${chgAbs >= 0 ? '+' : ''}${chgAbs.toFixed(2)}` : ''}&nbsp;&nbsp;
+              {tk?.change24h != null ? `${tk.change24h >= 0 ? '+' : ''}${tk.change24h.toFixed(2)} %` : ''}
+            </Typography>
+          </Stack>
+
+          {bigTrades.length === 0 && (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 6, fontSize: 13 }}>
+              {Object.values(connected).some(Boolean) ? t('ls.waiting') : t('ls.disconnected')}
+            </Typography>
+          )}
+          {bigTrades.slice(0, 40).map(tr => {
+            const color = tr.side === 'buy' ? LONG : SHORT;
+            return (
+              <Stack key={tr.id} direction="row" alignItems="center" sx={{ py: 0.6, fontSize: 12 }}>
+                <Box sx={{ width: 28, color, fontWeight: 700 }}>{tr.side === 'buy' ? '↗' : '↘'}</Box>
+                <Typography sx={{ width: 90, fontSize: 12, color: 'text.secondary' }}>{EX_META[tr.exchange].label}</Typography>
+                <Typography sx={{ flex: 1, fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>$ {tr.price.toFixed(2)}</Typography>
+                <Box sx={{ flex: 1 }}><SizeBadge usd={tr.usd} side={tr.side} /></Box>
+                <Box sx={{ flex: 1 }}><Drops usd={tr.usd} color={color} /></Box>
+                <Typography sx={{ width: 70, textAlign: 'right', fontSize: 12, color: 'text.secondary' }}>{age(now, tr.time)}</Typography>
+              </Stack>
+            );
+          })}
+        </Box>
       </Box>
-    </>
+    </Box>
   );
 };
 

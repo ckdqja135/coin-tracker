@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -11,39 +11,51 @@ import CompareVs from './pages/CompareVs';
 import LongShort from './pages/LongShort';
 import Correlation from './pages/Correlation';
 import Dashboard from './pages/Dashboard';
+import Calendar from './pages/Calendar';
 import { About, Blog, BlogPost, Policy } from './pages/Static';
+import { SelectedCoinsProvider } from './lib/selectedCoins';
+import { ThemeMode, ThemeModeContext } from './lib/themeMode';
+import { storage } from './lib/chartUtils';
 
 // Create theme
-const theme = createTheme({
+const buildTheme = (mode: ThemeMode) => createTheme({
   palette: {
-    mode: 'dark',
+    mode,
     primary: {
-      main: '#4fc3f7',
+      main: '#3d6cf4',
     },
     secondary: {
       main: '#f7931a',
     },
-    background: {
-      default: '#0b0e14',
-      paper: '#11161f',
-    },
-    divider: '#1d2430',
+    background: mode === 'dark'
+      ? { default: '#16191f', paper: '#1d2027' }
+      : { default: '#ffffff', paper: '#ffffff' },
   },
   shape: { borderRadius: 8 },
   typography: {
     fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     button: { textTransform: 'none' },
   },
-  components: {
-    MuiPaper: { styleOverrides: { outlined: { borderColor: '#1d2430' } } },
-  },
 });
 
 function App() {
+  const [mode, setMode] = useState<ThemeMode>(() => storage.get<ThemeMode>('themeMode', 'light'));
+  const theme = useMemo(() => buildTheme(mode), [mode]);
+  const themeMode = useMemo(() => ({
+    mode,
+    toggle: () => setMode(m => {
+      const next = m === 'dark' ? 'light' : 'dark';
+      storage.set('themeMode', next);
+      return next;
+    }),
+  }), [mode]);
+
   return (
+    <ThemeModeContext.Provider value={themeMode}>
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <I18nProvider>
+        <SelectedCoinsProvider>
         <Router>
           <Layout>
             <Routes>
@@ -54,6 +66,7 @@ function App() {
               <Route path="/markets" element={<Markets />} />
               <Route path="/longs-shorts" element={<LongShort />} />
               <Route path="/correlation" element={<Correlation />} />
+              <Route path="/calendar" element={<Calendar />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/about" element={<About />} />
@@ -64,8 +77,10 @@ function App() {
             </Routes>
           </Layout>
         </Router>
+        </SelectedCoinsProvider>
       </I18nProvider>
     </ThemeProvider>
+    </ThemeModeContext.Provider>
   );
 }
 

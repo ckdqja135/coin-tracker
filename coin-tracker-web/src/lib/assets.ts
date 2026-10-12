@@ -43,6 +43,7 @@ export const ASSETS: Asset[] = [
   yahoo('GOLD', 'Gold', 'GOLD', 'GC=F', 'commodity'),
   yahoo('SILVER', 'Silver', 'SILVER', 'SI=F', 'commodity'),
   yahoo('OIL', 'Crude Oil (WTI)', 'WTI', 'CL=F', 'commodity'),
+  yahoo('BRENT', 'Brent Oil', 'BRENT', 'BZ=F', 'commodity'),
   yahoo('NATGAS', 'Natural Gas', 'NG', 'NG=F', 'commodity'),
   yahoo('COPPER', 'Copper', 'COPPER', 'HG=F', 'commodity'),
   { id: 'USDKRW', name: 'USD/KRW', short: 'USDKRW', category: 'fx', source: 'yahoo', symbol: 'KRW=X', currency: 'KRW' },

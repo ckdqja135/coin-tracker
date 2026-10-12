@@ -54,3 +54,38 @@ export const fetchSnapshot = async (coin: string): Promise<CoinSnapshot> => {
   const { data } = await client.get('/snapshot', { params: { coin } });
   return data;
 };
+
+export type TickerExchange = 'upbit' | 'coinone' | 'bithumb' | 'korbit' | 'gateio' | 'binance';
+export interface Ticker { price: number; change24h: number | null; high: number | null; low: number | null; }
+export interface ExchangeTickers {
+  exchange: TickerExchange;
+  currency: 'KRW' | 'USD';
+  time: number;
+  usdKrw: number | null;
+  data: Record<string, Ticker>;
+}
+export interface CoinListItem { symbol: string; en: string; ko: string | null; }
+export interface OverviewItem { id: string; name: string; value: number; change: number | null; changePct: number | null; }
+export interface CoinInfo {
+  symbol: string; name: string; image: string | null; price: number; change24h: number | null;
+  high24h: number | null; low24h: number | null; marketCap: number | null;
+}
+
+export const fetchTickers = async (exchange: TickerExchange, coins: string[]): Promise<ExchangeTickers> => {
+  const { data } = await client.get('/tickers', { params: { exchange, coins: coins.join(',') } });
+  return data;
+};
+
+export const fetchCoinList = async (): Promise<CoinListItem[]> => (await client.get('/coins')).data;
+
+export const fetchOverview = async (): Promise<OverviewItem[]> => (await client.get('/overview')).data;
+
+export const fetchCoinInfo = async (symbols: string[]): Promise<CoinInfo[]> =>
+  (await client.get('/coininfo', { params: { symbols: symbols.join(',') } })).data;
+
+export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty';
+
+export const fetchSeries = async (kind: SeriesKind, coin: string, interval: Interval, limit: number): Promise<Point[]> => {
+  const { data } = await client.get('/series', { params: { kind, coin, interval, limit } });
+  return data.data;
+};

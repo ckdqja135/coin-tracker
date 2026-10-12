@@ -34,7 +34,7 @@ export const ChartState: React.FC<{ loading: boolean; error: string | null; heig
     <Box sx={{ position: 'relative', minHeight: height }}>
       {children}
       {loading && (
-        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(11,14,20,0.4)' }}>
+        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover' }}>
           <CircularProgress size={32} />
         </Box>
       )}

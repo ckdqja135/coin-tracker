@@ -422,3 +422,237 @@ export const getSnapshot = (coin: string): Promise<CoinSnapshot> => cached(`snap
         premium: { upbit: premium(upbit), bithumb: premium(bithumb) },
     };
 });
+
+// ---------------------------------------------------------------------------
+// 거래소별 전체 시세 (홈 비교표 / CIM)
+// ---------------------------------------------------------------------------
+export type TickerExchange = 'upbit' | 'coinone' | 'bithumb' | 'korbit' | 'gateio' | 'binance';
+export const TICKER_EXCHANGES: TickerExchange[] = ['upbit', 'coinone', 'bithumb', 'korbit', 'gateio', 'binance'];
+
+export interface Ticker {
+    price: number;
+    change24h: number | null; // %
+    high: number | null;
+    low: number | null;
+}
+
+export interface ExchangeTickers {
+    exchange: TickerExchange;
+    currency: 'KRW' | 'USD';
+    time: number;
+    data: Record<string, Ticker>;
+}
+
+const pct = (last: number, open: number) => (open ? (last / open - 1) * 100 : null);
+
+const loadTickers = async (exchange: TickerExchange): Promise<ExchangeTickers> => {
+    const data: Record<string, Ticker> = {};
+    switch (exchange) {
+        case 'upbit': {
+            const markets = await getUpbitMarkets();
+            const { data: rows } = await http.get('https://api.upbit.com/v1/ticker', {
+                params: { markets: markets.map(m => m.market).join(',') },
+            });
+            for (const r of rows) {
+                data[r.market.replace('KRW-', '')] = {
+                    price: r.trade_price, change24h: r.signed_change_rate * 100, high: r.high_price, low: r.low_price,
+                };
+            }
+            return { exchange, currency: 'KRW', time: Date.now(), data };
+        }
+        case 'coinone': {
+            const { data: res } = await http.get('https://api.coinone.co.kr/public/v2/ticker_new/KRW', { params: { additional_data: false } });
+            for (const r of res.tickers ?? []) {
+                data[r.target_currency.toUpperCase()] = { price: +r.last, change24h: pct(+r.last, +r.first), high: +r.high, low: +r.low };
+            }
+            return { exchange, currency: 'KRW', time: Date.now(), data };
+        }
+        case 'bithumb': {
+            const { data: res } = await http.get('https://api.bithumb.com/public/ticker/ALL_KRW');
+            Object.entries<any>(res.data ?? {}).forEach(([coin, r]) => {
+                if (coin === 'date') return;
+                data[coin] = {
+                    price: +r.closing_price, change24h: +r.fluctate_rate_24H, high: +r.max_price, low: +r.min_price,
+                };
+            });
+            return { exchange, currency: 'KRW', time: Date.now(), data };
+        }
+        case 'korbit': {
+            const { data: res } = await http.get('https://api.korbit.co.kr/v2/tickers');
+            for (const r of res.data ?? []) {
+                if (!r.symbol.endsWith('_krw')) continue;
+                data[r.symbol.replace('_krw', '').toUpperCase()] = {
+                    price: +r.close, change24h: +r.priceChangePercent, high: +r.high, low: +r.low,
+                };
+            }
+            return { exchange, currency: 'KRW', time: Date.now(), data };
+        }
+        case 'gateio': {
+            const { data: rows } = await http.get('https://api.gateio.ws/api/v4/spot/tickers');
+            for (const r of rows) {
+                if (!r.currency_pair.endsWith('_USDT')) continue;
+                data[r.currency_pair.replace('_USDT', '')] = {
+                    price: +r.last, change24h: +r.change_percentage, high: +r.high_24h, low: +r.low_24h,
+                };
+            }
+            return { exchange, currency: 'USD', time: Date.now(), data };
+        }
+        case 'binance': {
+            const { data: rows } = await http.get('https://api.binance.com/api/v3/ticker/24hr', { params: { type: 'MINI' } });
+            for (const r of rows) {
+                if (!r.symbol.endsWith('USDT')) continue;
+                const last = +r.lastPrice;
+                if (!last) continue;
+                data[r.symbol.replace(/USDT$/, '')] = { price: last, change24h: pct(last, +r.openPrice), high: +r.highPrice, low: +r.lowPrice };
+            }
+            return { exchange, currency: 'USD', time: Date.now(), data };
+        }
+    }
+};
+
+export const getTickers = (exchange: TickerExchange): Promise<ExchangeTickers> =>
+    cached(`tk:${exchange}`, 2_000, () => loadTickers(exchange));
+
+export const getUsdKrw = (): Promise<number | null> =>
+    cached('fx:usdkrw', 60_000, () => getKlines('yahoo', 'KRW=X', '1h', 2).then(k => k[k.length - 1]?.c ?? null));
+
+// ---------------------------------------------------------------------------
+// 코인 검색 목록 (업비트 원화마켓 + 바이낸스 USDT)
+// ---------------------------------------------------------------------------
+interface UpbitMarket { market: string; korean_name: string; english_name: string; }
+
+const getUpbitMarkets = (): Promise<UpbitMarket[]> => cached('upbit:markets', 3_600_000, async () => {
+    const { data } = await http.get('https://api.upbit.com/v1/market/all');
+    return (data as UpbitMarket[]).filter(m => m.market.startsWith('KRW-'));
+});
+
+export interface CoinListItem { symbol: string; en: string; ko: string | null; }
+
+export const getCoinList = (): Promise<CoinListItem[]> => cached('coins:list', 3_600_000, async () => {
+    const [upbit, binance] = await Promise.all([getUpbitMarkets(), safe(getTickers('binance'))]);
+    const map = new Map<string, CoinListItem>();
+    upbit.forEach(m => {
+        const symbol = m.market.replace('KRW-', '');
+        map.set(symbol, { symbol, en: m.english_name, ko: m.korean_name });
+    });
+    Object.keys(binance?.data ?? {}).forEach(symbol => {
+        if (!map.has(symbol)) map.set(symbol, { symbol, en: symbol, ko: null });
+    });
+    return Array.from(map.values());
+});
+
+// ---------------------------------------------------------------------------
+// 홈 상단 지수 스트립 / 코인 요약 (CoinGecko + Yahoo)
+// ---------------------------------------------------------------------------
+export interface OverviewItem { id: string; name: string; value: number; change: number | null; changePct: number | null; }
+
+const yahooQuote = async (id: string, name: string, symbol: string): Promise<OverviewItem | null> => {
+    const k = await getKlines('yahoo', symbol, '1d', 5);
+    if (k.length === 0) return null;
+    const last = k[k.length - 1].c;
+    const prev = k.length > 1 ? k[k.length - 2].c : null;
+    return { id, name, value: last, change: prev != null ? last - prev : null, changePct: prev ? (last / prev - 1) * 100 : null };
+};
+
+export const getOverview = (): Promise<OverviewItem[]> => cached('overview', 60_000, async () => {
+    const [spx, ndx, dxy, global] = await Promise.all([
+        safe(yahooQuote('SPX', 'S&P 500', '^GSPC')),
+        safe(yahooQuote('NDX', 'US 100', '^NDX')),
+        safe(yahooQuote('DXY', 'Dollar Index', 'DX-Y.NYB')),
+        safe(http.get('https://api.coingecko.com/api/v3/global').then(r => r.data.data)),
+    ]);
+    const items: (OverviewItem | null)[] = [spx, ndx, dxy];
+    if (global) {
+        const mcap = global.total_market_cap.usd as number;
+        const chg = global.market_cap_change_percentage_24h_usd as number;
+        items.push({ id: 'TOTAL', name: 'Crypto Total Market Cap', value: mcap, change: mcap - mcap / (1 + chg / 100), changePct: chg });
+        items.push({ id: 'BTC.D', name: 'Dominance BTC', value: global.market_cap_percentage.btc, change: null, changePct: null });
+    }
+    return items.filter((x): x is OverviewItem => x != null);
+});
+
+export interface CoinInfo {
+    symbol: string; name: string; image: string | null; price: number; change24h: number | null;
+    high24h: number | null; low24h: number | null; marketCap: number | null;
+}
+
+export const getCoinInfo = (symbols: string[]): Promise<CoinInfo[]> => {
+    const list = Array.from(new Set(symbols.map(s => s.toUpperCase()))).slice(0, 30).sort();
+    return cached(`coininfo:${list.join(',')}`, 30_000, async () => {
+        const { data } = await http.get('https://api.coingecko.com/api/v3/coins/markets', {
+            params: { vs_currency: 'usd', symbols: list.join(',').toLowerCase() },
+        });
+        // 같은 심볼의 토큰이 여럿이면 시가총액 순위가 가장 높은 것을 사용
+        const best = new Map<string, any>();
+        for (const c of data) {
+            const sym = String(c.symbol).toUpperCase();
+            const cur = best.get(sym);
+            if (!cur || (c.market_cap_rank ?? 1e9) < (cur.market_cap_rank ?? 1e9)) best.set(sym, c);
+        }
+        return list.filter(s => best.has(s)).map(s => {
+            const c = best.get(s);
+            return {
+                symbol: s, name: c.name, image: c.image ?? null, price: c.current_price, change24h: c.price_change_percentage_24h,
+                high24h: c.high_24h, low24h: c.low_24h, marketCap: c.market_cap,
+            };
+        });
+    });
+};
+
+// ---------------------------------------------------------------------------
+// 비교 카드용 보조 시계열 (거래소별 미결제약정, 공포탐욕지수, 해시레이트, 난이도)
+// ---------------------------------------------------------------------------
+export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrate' | 'difficulty';
+export const SERIES_KINDS: SeriesKind[] = ['oi-binance', 'oi-bybit', 'oi-okx', 'fng', 'hashrate', 'difficulty'];
+
+const BYBIT_OI_INTERVAL: Record<Interval, string> = {
+    '1m': '5min', '5m': '5min', '30m': '30min', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1d', '1M': '1d',
+};
+const OKX_PERIOD: Record<Interval, string> = {
+    '1m': '5m', '5m': '5m', '30m': '1H', '1h': '1H', '4h': '1H', '1d': '1D', '1w': '1D', '1M': '1D',
+};
+
+const mempoolPeriod = (interval: Interval, limit: number) => {
+    const days = (INTERVAL_MS[interval] * limit) / DAY_MS;
+    if (days <= 31) return '1m';
+    if (days <= 93) return '3m';
+    if (days <= 186) return '6m';
+    if (days <= 366) return '1y';
+    if (days <= 732) return '2y';
+    return '3y';
+};
+
+export const getSeries = (kind: SeriesKind, coin: string, interval: Interval, limit: number): Promise<Point[]> => {
+    const key = `series:${kind}:${coin}:${interval}:${limit}`;
+    return cached(key, ttlFor(interval), async (): Promise<Point[]> => {
+        switch (kind) {
+            case 'oi-binance':
+                return getMetric('oi', `${coin}USDT`, interval, limit);
+            case 'oi-bybit': {
+                const { data } = await http.get('https://api.bybit.com/v5/market/open-interest', {
+                    params: { category: 'linear', symbol: `${coin}USDT`, intervalTime: BYBIT_OI_INTERVAL[interval], limit: clamp(limit, 1, 200) },
+                });
+                if (data.retCode !== 0) throw new Error(`Bybit error: ${data.retMsg}`);
+                return data.result.list.map((d: any) => ({ t: +d.timestamp, v: +d.openInterest })).sort((a: Point, b: Point) => a.t - b.t);
+            }
+            case 'oi-okx': {
+                const { data } = await http.get('https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-volume', {
+                    params: { ccy: coin, period: OKX_PERIOD[interval] },
+                });
+                if (data.code !== '0') throw new Error(`OKX error: ${data.msg}`);
+                return data.data.slice(0, limit).map((d: string[]) => ({ t: +d[0], v: +d[1] })).sort((a: Point, b: Point) => a.t - b.t);
+            }
+            case 'fng': {
+                const { data } = await http.get('https://api.alternative.me/fng/', { params: { limit: Math.ceil((INTERVAL_MS[interval] * limit) / DAY_MS) + 1 } });
+                return data.data.map((d: any) => ({ t: +d.timestamp * 1000, v: +d.value })).sort((a: Point, b: Point) => a.t - b.t);
+            }
+            case 'hashrate':
+            case 'difficulty': {
+                const { data } = await http.get(`https://mempool.space/api/v1/mining/hashrate/${mempoolPeriod(interval, limit)}`);
+                return kind === 'hashrate'
+                    ? data.hashrates.map((d: any) => ({ t: d.timestamp * 1000, v: d.avgHashrate / 1e18 })) // EH/s
+                    : data.difficulty.map((d: any) => ({ t: d.time * 1000, v: d.difficulty / 1e12 })); // T
+            }
+        }
+    });
+};

@@ -1,10 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box, Button, ButtonGroup, CircularProgress, MenuItem, Stack, TextField, Tooltip, Typography,
-} from '@mui/material';
-import { PageHeader, Panel } from '../components/Panel';
+import { Box, CircularProgress, Stack, Tooltip, Typography } from '@mui/material';
 import { useI18n } from '../i18n';
-import { Asset, findAsset } from '../lib/assets';
+import { findAsset } from '../lib/assets';
 import { INTERVAL_MS, correlation } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
 import { Candle, Interval, fetchKlines } from '../services/market';
@@ -18,141 +15,173 @@ const TF_CONF: Record<Tf, { interval: Interval; limit: number }> = {
   '1Y': { interval: '1d', limit: 365 },
 };
 
-const UNIVERSE = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'SPX', 'NDX', 'GOLD', 'DXY', 'OIL', 'USDKRW']
-  .map(id => findAsset(id)!)
-  .filter(Boolean);
+const UNIVERSE = [
+  { id: 'BTC', name: 'Bitcoin' },
+  { id: 'NDX', name: 'Nasdaq' },
+  { id: 'GOLD', name: 'Gold' },
+  { id: 'ETH', name: 'Ethereum' },
+  { id: 'DXY', name: 'US Dollar Index' },
+];
 
-/** 거래 시간이 다른 자산을 같은 버킷 시각에 맞춘다 */
+const UP = '#5fbfab';
+const DOWN = '#e57373';
+
+/** 거래 시간이 다른 자산을 같은 버킷 시각에 맞춘다 (일봉은 UTC 날짜 기준) */
 const align = (candles: Candle[], interval: Interval) => {
   const step = INTERVAL_MS[interval];
   const map = new Map<number, Candle>();
-  candles.forEach(k => map.set(Math.floor(k.t / step) * step, { ...k, t: Math.floor(k.t / step) * step }));
+  candles.forEach(k => {
+    const t = Math.floor(k.t / step) * step;
+    map.set(t, { ...k, t });
+  });
   return Array.from(map.values());
 };
 
 const useUniverse = (tf: Tf) => useAsync(async () => {
   const { interval, limit } = TF_CONF[tf];
-  const settled = await Promise.allSettled(UNIVERSE.map(a => fetchKlines(a.source, a.symbol, interval, limit)));
+  const settled = await Promise.allSettled(UNIVERSE.map(u => {
+    const a = findAsset(u.id)!;
+    return fetchKlines(a.source, a.symbol, interval, limit);
+  }));
   const out: Record<string, Candle[]> = {};
-  UNIVERSE.forEach((a, i) => {
+  UNIVERSE.forEach((u, i) => {
     const r = settled[i];
-    out[a.id] = r.status === 'fulfilled' ? align(r.value, interval) : [];
+    out[u.id] = r.status === 'fulfilled' ? align(r.value, interval) : [];
   });
   return out;
 }, [tf], 300_000);
 
-/** -1(빨강) ~ 0(회색) ~ +1(초록) */
-const corrColor = (r: number | null) => {
-  if (r == null) return '#1d2430';
+/** 연한 파스텔 색: +1 청록 ~ 0 회색 ~ -1 빨강 */
+const cellColor = (r: number | null) => {
+  if (r == null) return '#eef1f4';
   const a = Math.min(1, Math.abs(r));
-  return r >= 0 ? `rgba(38,166,154,${0.15 + a * 0.75})` : `rgba(239,83,80,${0.15 + a * 0.75})`;
+  return r >= 0 ? `rgba(95,191,171,${0.15 + a * 0.85})` : `rgba(229,115,115,${0.15 + a * 0.85})`;
 };
 
-const TfButtons: React.FC<{ value: Tf; onChange: (t: Tf) => void }> = ({ value, onChange }) => (
-  <ButtonGroup size="small" color="inherit">
+const TfChips: React.FC<{ value: Tf; onChange: (t: Tf) => void }> = ({ value, onChange }) => (
+  <Stack direction="row" gap={0.5}>
     {TFS.map(tf => (
-      <Button key={tf} variant={tf === value ? 'contained' : 'outlined'} color={tf === value ? 'primary' : 'inherit'}
-        onClick={() => onChange(tf)} sx={{ minWidth: 0, px: 1.2, fontSize: 12 }}>{tf}</Button>
+      <Box key={tf} component="button" onClick={() => onChange(tf)}
+        sx={{
+          width: 26, height: 26, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 9, fontWeight: 700, fontFamily: 'inherit',
+          bgcolor: tf === value ? '#6b6f76' : '#2c2e33', color: tf === value ? '#fff' : '#9aa1ad',
+        }}>{tf}</Box>
     ))}
-  </ButtonGroup>
+  </Stack>
 );
 
-const Loading = () => <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={28} /></Box>;
+const Panel: React.FC<{ title: string; actions?: React.ReactNode; children: React.ReactNode }> = ({ title, actions, children }) => (
+  <Box sx={{ border: 1, borderColor: 'text.secondary', borderRadius: 0.5, p: 2 }}>
+    <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
+      <Typography sx={{ fontSize: 15, fontWeight: 800, flexGrow: 1 }}>{title}</Typography>
+      {actions}
+    </Stack>
+    {children}
+  </Box>
+);
 
-const VsList: React.FC<{ base: Asset; onBaseChange?: (id: string) => void; title: string }> = ({ base, onBaseChange, title }) => {
-  const [tf, setTf] = useState<Tf>('1M');
+const Loading = () => <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress size={26} /></Box>;
+
+const VsBars: React.FC<{ baseId: string; title: string }> = ({ baseId, title }) => {
+  const [tf, setTf] = useState<Tf>('1D');
   const { data, loading } = useUniverse(tf);
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-    return UNIVERSE.filter(a => a.id !== base.id)
-      .map(a => ({ asset: a, ...correlation(data[base.id] ?? [], data[a.id] ?? []) }))
-      .sort((x, y) => (y.r ?? -2) - (x.r ?? -2));
-  }, [data, base.id]);
+  const rows = useMemo(() => (data
+    ? UNIVERSE.filter(u => u.id !== baseId).map(u => ({ ...u, r: correlation(data[baseId] ?? [], data[u.id] ?? []).r }))
+    : []), [data, baseId]);
 
   return (
-    <Panel
-      title={title}
-      actions={
-        <Stack direction="row" gap={1} alignItems="center">
-          {onBaseChange && (
-            <TextField select size="small" value={base.id} onChange={e => onBaseChange(e.target.value)} sx={{ minWidth: 140 }}>
-              {UNIVERSE.map(a => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
-            </TextField>
-          )}
-          <TfButtons value={tf} onChange={setTf} />
-        </Stack>
-      }
-    >
+    <Panel title={title} actions={<TfChips value={tf} onChange={setTf} />}>
       {loading && !data ? <Loading /> : (
-        <Stack spacing={0.8}>
+        <Box sx={{ position: 'relative', pt: 1 }}>
+          {/* -1 / 0 / +1 눈금 */}
+          <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 9, color: 'text.secondary', px: 0.5, borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            <span>-1</span><span>0</span><span>1</span>
+          </Stack>
+          <Box sx={{ position: 'absolute', left: '50%', top: 18, bottom: 0, width: '1px', bgcolor: 'divider' }} />
           {rows.map(r => (
-            <Stack key={r.asset.id} direction="row" alignItems="center" gap={1.5}>
-              <Typography sx={{ width: 120, fontSize: 13, fontWeight: 600 }} noWrap>{r.asset.name}</Typography>
-              <Box sx={{ flexGrow: 1, height: 18, position: 'relative', bgcolor: '#141a24', borderRadius: 1 }}>
-                <Box sx={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', bgcolor: '#3a4556' }} />
-                {r.r != null && (
+            <Box key={r.id} sx={{ mb: 2.5 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>{r.name}</Typography>
+              <Box sx={{ position: 'relative', height: 16, bgcolor: '#e6e9f2', borderRadius: 99 }}>
+                {r.r != null && Math.abs(r.r) > 0.005 && (
                   <Box sx={{
-                    position: 'absolute', top: 2, bottom: 2, borderRadius: 0.5, bgcolor: corrColor(r.r),
+                    position: 'absolute', top: 0, bottom: 0, bgcolor: r.r >= 0 ? UP : DOWN,
                     left: r.r >= 0 ? '50%' : `${50 + r.r * 50}%`, width: `${Math.abs(r.r) * 50}%`,
+                    borderRadius: r.r >= 0 ? '0 99px 99px 0' : '99px 0 0 99px',
                   }} />
                 )}
-              </Box>
-              <Tooltip title={`n = ${r.n}`}>
-                <Typography sx={{ width: 56, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 700 }}>
+                <Typography sx={{
+                  position: 'absolute', top: 0, fontSize: 9, lineHeight: '16px', color: r.r != null && Math.abs(r.r) > 0.2 ? '#fff' : '#8a94a3',
+                  left: r.r != null && r.r > 0.2 ? 'calc(50% + 6px)' : r.r != null && r.r < -0.2 ? `calc(${50 + r.r * 50}% + 6px)` : '50%',
+                  transform: r.r == null || Math.abs(r.r) <= 0.2 ? 'translateX(-50%)' : undefined,
+                }}>
                   {r.r == null ? 'N/A' : r.r.toFixed(2)}
                 </Typography>
-              </Tooltip>
-            </Stack>
+              </Box>
+            </Box>
           ))}
-        </Stack>
+        </Box>
       )}
     </Panel>
   );
 };
 
+const LEGEND_STOPS = [1, 0.75, 0.5, 0.25, 0, -0.25, -0.5, -0.75, -1];
+
 const Heatmap: React.FC = () => {
   const { t } = useI18n();
-  const [tf, setTf] = useState<Tf>('1M');
+  const [tf, setTf] = useState<Tf>('1D');
   const { data, loading } = useUniverse(tf);
-
-  const matrix = useMemo(() => {
-    if (!data) return null;
-    return UNIVERSE.map(a => UNIVERSE.map(b => (a.id === b.id ? 1 : correlation(data[a.id] ?? [], data[b.id] ?? []).r)));
-  }, [data]);
-
+  const matrix = useMemo(() => (data
+    ? UNIVERSE.map(a => UNIVERSE.map(b => correlation(data[a.id] ?? [], data[b.id] ?? []).r))
+    : null), [data]);
   const n = UNIVERSE.length;
+
   return (
-    <Panel title={t('corr.heatmap')} subtitle={t('corr.note')} actions={<TfButtons value={tf} onChange={setTf} />}>
+    <Panel title={t('corr.heatmap')} actions={<TfChips value={tf} onChange={setTf} />}>
       {loading && !matrix ? <Loading /> : matrix && (
-        <Box sx={{ overflowX: 'auto' }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: `80px repeat(${n}, minmax(44px, 1fr))`, gap: '2px', minWidth: 80 + n * 46, maxWidth: 80 + n * 64 }}>
-            {UNIVERSE.map((row, i) => (
-              <React.Fragment key={row.id}>
-                <Typography sx={{ fontSize: 12, fontWeight: 600, alignSelf: 'center' }} noWrap>{row.short}</Typography>
-                {UNIVERSE.map((col, j) => {
-                  // 하삼각 + 대각선만 표시
-                  if (j > i) return <Box key={col.id} />;
-                  const r = matrix[i][j];
-                  return (
-                    <Tooltip key={col.id} title={`${row.name} × ${col.name}`}>
-                      <Box sx={{
-                        bgcolor: corrColor(r), aspectRatio: '1.4', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 700, borderRadius: 0.5, fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        {r == null ? '–' : r.toFixed(2)}
-                      </Box>
-                    </Tooltip>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-            <Box />
-            {UNIVERSE.map(c => (
-              <Typography key={c.id} sx={{ fontSize: 11, fontWeight: 600, textAlign: 'center' }} noWrap>{c.short}</Typography>
-            ))}
+        <Stack direction="row" gap={4} sx={{ overflowX: 'auto', py: 1 }}>
+          <Box sx={{ flexGrow: 1, minWidth: 560 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: `110px repeat(${n}, 1fr)`, gap: 1, borderLeft: 0 }}>
+              {UNIVERSE.map((row, i) => (
+                <React.Fragment key={row.id}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, alignSelf: 'center', textAlign: 'right', pr: 1 }}>{row.name}</Typography>
+                  {UNIVERSE.map((col, j) => {
+                    if (j > i) return <Box key={col.id} />;
+                    if (i === j) {
+                      return <Box key={col.id} sx={{ bgcolor: '#eef1f4', height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0b6c0' }}>·</Box>;
+                    }
+                    const r = matrix[i][j];
+                    return (
+                      <Tooltip key={col.id} title={`${row.name} × ${col.name}`}>
+                        <Box sx={{
+                          bgcolor: cellColor(r), height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, color: r != null && Math.abs(r) > 0.6 ? '#fff' : '#333', fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {r == null ? 'N/A' : r.toFixed(2)}
+                        </Box>
+                      </Tooltip>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+              <Box />
+              {UNIVERSE.map(c => (
+                <Typography key={c.id} sx={{ fontSize: 12, fontWeight: 700, transform: 'rotate(-40deg)', transformOrigin: 'center', textAlign: 'center', whiteSpace: 'nowrap', mt: 3, mb: 3 }}>
+                  {c.name}
+                </Typography>
+              ))}
+            </Box>
           </Box>
-        </Box>
+          {/* 색상 범례 */}
+          <Stack sx={{ pt: 0.5 }}>
+            {LEGEND_STOPS.map((v, idx) => (
+              <Stack key={v} direction="row" alignItems="flex-start" gap={1} sx={{ height: 44 }}>
+                <Box sx={{ width: 4, height: idx === LEGEND_STOPS.length - 1 ? 2 : 44, bgcolor: cellColor(v === 0 ? 0.01 : v - Math.sign(v) * 0.125) }} />
+                <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: -0.8 }}>{v.toFixed(2)}</Typography>
+              </Stack>
+            ))}
+          </Stack>
+        </Stack>
       )}
     </Panel>
   );
@@ -160,19 +189,16 @@ const Heatmap: React.FC = () => {
 
 const Correlation: React.FC = () => {
   const { t } = useI18n();
-  const [vsBase, setVsBase] = useState('ETH');
-  const btc = findAsset('BTC')!;
-  const other = findAsset(vsBase)!;
-
   return (
-    <>
-      <PageHeader title={t('corr.title')} desc={t('corr.desc')} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, columnGap: 2 }}>
-        <VsList base={btc} title={`${t('corr.coef')} · ${t('corr.vs', { asset: 'Bitcoin' })}`} />
-        <VsList base={other} onBaseChange={setVsBase} title={t('corr.vs', { asset: other.name })} />
+    <Box>
+      <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 1 }}>{t('corr.coef')}</Typography>
+      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 3, maxWidth: 900 }}>{t('corr.intro')}</Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 3 }}>
+        <VsBars baseId="BTC" title={t('corr.vs', { asset: 'Bitcoin' })} />
+        <VsBars baseId="ETH" title={t('corr.vs', { asset: 'Ethereum' })} />
       </Box>
       <Heatmap />
-    </>
+    </Box>
   );
 };
 
