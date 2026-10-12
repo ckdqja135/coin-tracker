@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useParams } from 'react-router-dom';
-import { Box, Button, Card, CardActionArea, CardContent, Chip, InputBase, Link, Stack, Typography } from '@mui/material';
+import { Box, Button, InputBase, Link, Stack, Typography } from '@mui/material';
 import { PageHeader, Panel } from '../components/Panel';
 import { useI18n, Lang, TKey } from '../i18n';
 
@@ -115,6 +115,23 @@ const POSTS: Post[] = [
   },
 ];
 
+// 글마다 직접 만든 그라데이션 썸네일과 해시태그
+const THUMBS: Record<string, { from: string; to: string; symbol: string }> = {
+  'open-interest': { from: '#3182f6', to: '#1b64da', symbol: 'OI' },
+  'kimchi-premium': { from: '#f04452', to: '#ff8a3d', symbol: '₩' },
+  'long-short-ratio': { from: '#26a69a', to: '#2f80ed', symbol: 'L / S' },
+  'gold-and-bitcoin': { from: '#f2c94c', to: '#f7931a', symbol: 'Au · ₿' },
+  'dollar-index': { from: '#2c3e50', to: '#4ca1af', symbol: '$' },
+};
+
+const TAGS: Record<string, string[]> = {
+  'open-interest': ['#OI', '#Derivatives'],
+  'kimchi-premium': ['#KRW', '#Premium'],
+  'long-short-ratio': ['#LongShort', '#Sentiment'],
+  'gold-and-bitcoin': ['#Gold', '#BTC'],
+  'dollar-index': ['#DXY', '#Macro'],
+};
+
 export const Blog: React.FC = () => {
   const { t, lang } = useI18n();
   const [cat, setCat] = useState<Category | 'all'>('all');
@@ -139,21 +156,32 @@ export const Blog: React.FC = () => {
         </Box>
       </Stack>
       {posts.length === 0 && <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>{t('search.empty')}</Typography>}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
-        {posts.map(p => (
-          <Card key={p.slug} variant="outlined">
-            <CardActionArea component={RouterLink} to={`/blog/${p.slug}`} sx={{ height: '100%' }}>
-              <CardContent>
-                <Stack direction="row" gap={1} alignItems="center" sx={{ mb: 1 }}>
-                  <Chip size="small" label={p.tag} />
-                  <Typography variant="caption" color="text.secondary">{p.date}</Typography>
-                </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>{p.title[lang]}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{p.body[lang][0]}</Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        ))}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }, columnGap: 2.5, rowGap: 4 }}>
+        {posts.map(p => {
+          const th = THUMBS[p.slug];
+          return (
+            <Box key={p.slug} component={RouterLink} to={`/blog/${p.slug}`}
+              sx={{ minWidth: 0, textDecoration: 'none', color: 'inherit', pb: 3, borderBottom: 1, borderColor: 'divider', '&:hover .thumb': { transform: 'scale(1.03)' } }}>
+              {/* 직접 만든 그라데이션 썸네일 */}
+              <Box sx={{ borderRadius: 2, overflow: 'hidden', mb: 2, aspectRatio: '16 / 11' }}>
+                <Box className="thumb" sx={{
+                  width: '100%', height: '100%', transition: 'transform .3s',
+                  background: `linear-gradient(135deg, ${th?.from ?? '#3182f6'}, ${th?.to ?? '#1b64da'})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.92)', fontSize: 44, fontWeight: 800, letterSpacing: -1,
+                }}>
+                  {th?.symbol ?? '◆'}
+                </Box>
+              </Box>
+              <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.4 }}>{p.title[lang]}</Typography>
+              <Typography noWrap sx={{ fontSize: 13, color: 'text.secondary', mt: 1 }}>{p.body[lang][0]}</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'text.secondary', textAlign: 'right', mt: 1 }}>
+                {(TAGS[p.slug] ?? [`#${p.tag}`]).join(' ')}
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 1.5 }}>{p.date}</Typography>
+            </Box>
+          );
+        })}
       </Box>
     </>
   );
