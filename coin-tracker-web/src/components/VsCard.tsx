@@ -22,9 +22,22 @@ interface Props {
   onEmbed: () => void;
 }
 
-const lastPoint = (pts: Point[]) => pts.map((p, i) => (i === pts.length - 1
-  ? { x: p.t, y: p.v, marker: { enabled: true, radius: 4 } }
-  : [p.t, p.v]));
+/** 마지막 점은 크게, extremes면 기간 중 최고점·최저점에도 작은 점을 찍는다 */
+const markPoints = (pts: Point[], extremes: boolean) => {
+  let hi = -1;
+  let lo = -1;
+  if (extremes && pts.length > 2) {
+    pts.forEach((p, i) => {
+      if (hi < 0 || p.v > pts[hi].v) hi = i;
+      if (lo < 0 || p.v < pts[lo].v) lo = i;
+    });
+  }
+  return pts.map((p, i) => {
+    if (i === pts.length - 1) return { x: p.t, y: p.v, marker: { enabled: true, radius: 4 } };
+    if (i === hi || i === lo) return { x: p.t, y: p.v, marker: { enabled: true, radius: 2.5 } };
+    return [p.t, p.v];
+  });
+};
 
 const chip = (active: boolean) => ({
   width: 26, height: 26, minWidth: 0, borderRadius: '50%', fontSize: 10, fontWeight: 700, p: 0,
@@ -71,8 +84,8 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     tooltip: { shared: true, xDateFormat: '%Y-%m-%d %H:%M', valueDecimals: 2, outside: true },
     plotOptions: { series: { animation: false, lineWidth: 1.2, marker: { enabled: false }, states: { hover: { lineWidthPlus: 0 } } } },
     series: [
-      ...(base ? [{ type: 'line' as const, name: base.short, color: dark ? BASE_COLOR_DARK : BASE_COLOR, yAxis: 0, data: lastPoint(data?.b ?? []) }] : []),
-      { type: 'line' as const, name: target.short, color: TARGET_COLOR, yAxis: base ? 1 : 0, data: lastPoint(data?.tg ?? []) },
+      ...(base ? [{ type: 'line' as const, name: base.short, color: dark ? BASE_COLOR_DARK : BASE_COLOR, yAxis: 0, data: markPoints(data?.b ?? [], false) }] : []),
+      { type: 'line' as const, name: target.short, color: TARGET_COLOR, yAxis: base ? 1 : 0, data: markPoints(data?.tg ?? [], true) },
     ],
   }), [data, base, target.short, range, chartBg, dark]);
 

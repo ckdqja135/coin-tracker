@@ -134,15 +134,29 @@ export const storage = {
 };
 
 /**
- * [start, end] 구간만 남기되, 장이 닫혀 구간 안에 점이 없거나 시작이 비어 있으면
- * 직전 마지막 값으로 채워 평평한 선으로 이어 그린다 (지수·원자재처럼 거래 시간이 정해진 자산용).
+ * [start, end] 구간만 남기되, 장이 닫혀 데이터가 없는 구간은 직전 값으로 평평하게 이어 그린다
+ * (지수·원자재처럼 거래 시간이 정해진 자산용). 데이터가 다시 생기는 지점에서 꺾이므로 사선이 생기지 않는다.
  */
 export const fillRange = <T extends { t: number; v: number }>(points: T[], start: number, end: number): { t: number; v: number }[] => {
   const before = points.filter(p => p.t < start);
   const inside = points.filter(p => p.t >= start && p.t <= end).map(p => ({ t: p.t, v: p.v }));
   const carry = before[before.length - 1];
   if (carry && (!inside.length || inside[0].t > start)) inside.unshift({ t: start, v: carry.v });
-  const last = inside[inside.length - 1];
-  if (last && last.t < end) inside.push({ t: end, v: last.v });
-  return inside;
+
+  // 평소 간격(가장 짧은 간격)의 3배보다 벌어진 곳은 휴장으로 보고, 다음 점 직전까지 이전 값을 유지한다
+  let step = Infinity;
+  for (let i = 1; i < inside.length; i++) {
+    const d = inside[i].t - inside[i - 1].t;
+    if (d > 0 && d < step) step = d;
+  }
+  const out: { t: number; v: number }[] = [];
+  inside.forEach((p, i) => {
+    const prev = out[out.length - 1];
+    if (i > 0 && prev && Number.isFinite(step) && p.t - prev.t > step * 3) out.push({ t: p.t - 1, v: prev.v });
+    out.push(p);
+  });
+
+  const last = out[out.length - 1];
+  if (last && last.t < end) out.push({ t: end, v: last.v });
+  return out;
 };
