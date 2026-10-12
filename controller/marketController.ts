@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import {
     getKlines,
+    getKlinesSince,
     getMetric,
     getLongShort,
     getLongShortPeriods,
@@ -44,6 +45,7 @@ const handleError = (res: Response, err: any, label: string) => {
 
 /**
  * GET /api/market/klines?source=binance&symbol=BTCUSDT&interval=1h&limit=500
+ * GET /api/market/klines?source=upbit&symbol=BTC&interval=1m&since=1791763200000
  */
 export const klines = async (req: Request, res: Response) => {
     const { source = 'binance', symbol, interval = '1h' } = req.query as Record<string, string>;
@@ -51,8 +53,16 @@ export const klines = async (req: Request, res: Response) => {
     if (!symbol || !SYMBOL_RE.test(symbol)) return badRequest(res, 'symbol is required');
     if (!INTERVALS.includes(interval as Interval)) return badRequest(res, `interval must be one of ${INTERVALS.join(', ')}`);
 
+    // since(ms)를 주면 그 시각 이후 캔들을 모두 반환 (최대 1500개, 최근 3일 이내)
+    const since = req.query.since != null ? Number(req.query.since) : null;
+    if (since != null && (!Number.isFinite(since) || since < Date.now() - 3 * 86_400_000)) {
+        return badRequest(res, 'since must be a timestamp (ms) within the last 3 days');
+    }
+
     try {
-        const data = await getKlines(source as KlineSource, symbol, interval as Interval, parseLimit(req.query.limit, 500));
+        const data = since != null
+            ? await getKlinesSince(source as KlineSource, symbol, interval as Interval, since)
+            : await getKlines(source as KlineSource, symbol, interval as Interval, parseLimit(req.query.limit, 500));
         res.json({ source, symbol, interval, data });
     } catch (err: any) {
         handleError(res, err, 'klines');

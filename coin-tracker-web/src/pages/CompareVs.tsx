@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Box, Button, Divider, IconButton, MenuItem, Select, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import Highcharts from 'highcharts/highstock';
+import { useTheme } from '@mui/material/styles';
 import SidebarLayout from '../components/SidebarLayout';
 import SidebarMenu, { MenuGroup } from '../components/SidebarMenu';
 import StockChart, { StockChartHandle, baseOptions, yAxis } from '../components/StockChart';
@@ -21,15 +22,17 @@ const AUTO: Record<CardRange, { interval: Interval; limit: number }> = {
 };
 const COLORS = ['#3d6cf4', '#f7931a', '#26a69a', '#ab47bc', '#ef5350', '#ffca28', '#00acc1', '#8d6e63'];
 const MAX = 8;
-const CARD = '#1b1c1f';
 
 const toggleSx = (active: boolean) => ({
   minWidth: 0, px: 1.5, py: 0.3, fontSize: 11, fontWeight: 700, borderRadius: 0,
-  bgcolor: active ? '#3a3d44' : 'transparent', color: active ? '#fff' : '#9aa1ad', border: '1px solid #3a3d44',
+  bgcolor: active ? 'ui.chip.activeBg' : 'transparent', color: active ? 'ui.chip.activeFg' : 'ui.card.muted', border: 1, borderColor: 'ui.card.iconBorder',
 });
 
 const CompareVs: React.FC = () => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const cardBg = theme.palette.ui.card.bg;
+  const isDark = theme.palette.mode === 'dark';
   const chartRef = useRef<StockChartHandle>(null);
   const items = useMemo(() => compareItems(), []);
   const [checked, setChecked] = useState<string[]>(() => storage.get('compareChecked', ['BTC', 'ETH']));
@@ -85,10 +88,10 @@ const CompareVs: React.FC = () => {
     });
     return {
       ...base,
-      chart: { ...base.chart, backgroundColor: CARD, height: 460 },
+      chart: { ...base.chart, backgroundColor: cardBg, height: 460 },
       xAxis: { ...(base.xAxis as Highcharts.XAxisOptions), min, max },
       yAxis: percent
-        ? [yAxis({ labels: { format: '{value}%', align: 'left', x: 6, style: { color: '#9aa1ad' } } })]
+        ? [yAxis({ labels: { format: '{value}%', align: 'left', x: 6, style: { color: '#8b95a1' } } })]
         : rows.map((r, i) => yAxis({
           type: scale === 'log' ? 'logarithmic' : 'linear', visible: i < 2, opposite: i % 2 === 0, gridLineWidth: i === 0 ? 1 : 0,
           labels: { align: i % 2 === 0 ? 'left' : 'right', x: i % 2 === 0 ? 6 : -6, style: { color: COLORS[i % COLORS.length] } },
@@ -96,7 +99,7 @@ const CompareVs: React.FC = () => {
       plotOptions: { ...base.plotOptions, series: { ...base.plotOptions!.series, compareStart: true } as any },
       series,
     };
-  }, [result.data, scale, ma, from, to]);
+  }, [result.data, scale, ma, from, to, cardBg]);
 
   const onCsv = () => {
     const rows = result.data ?? [];
@@ -106,8 +109,8 @@ const CompareVs: React.FC = () => {
   };
 
   const dateInputSx = {
-    '& input': { color: '#fff', fontSize: 11, py: 0.6, colorScheme: 'dark' },
-    '& fieldset': { borderColor: '#3a3d44' },
+    '& input': { color: 'ui.card.fg', fontSize: 11, py: 0.6, colorScheme: isDark ? 'dark' : 'light' },
+    '& fieldset': { borderColor: 'ui.card.iconBorder' },
   };
 
   return (
@@ -116,7 +119,7 @@ const CompareVs: React.FC = () => {
         <SidebarMenu title={t('compare.title')} groups={groups} query={query} onQueryChange={setQuery}
           checked={checked} onToggle={toggle} searchPlaceholder={t('cards.search')} />
         <Button size="small" onClick={() => { setChecked([]); storage.set('compareChecked', []); }}
-          sx={{ mt: 2, color: '#9aa1ad', fontSize: 11 }}>⟲ {t('compare.reset')}</Button>
+          sx={{ mt: 2, color: 'ui.sidebar.fg', fontSize: 11 }}>⟲ {t('compare.reset')}</Button>
       </>
     }>
       <Stack direction="row" alignItems="center" gap={1.5} sx={{ mb: 2 }}>
@@ -124,11 +127,14 @@ const CompareVs: React.FC = () => {
         <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{t('compare.title')}</Typography>
       </Stack>
 
-      <Box sx={{ bgcolor: CARD, color: '#fff', border: '1px solid #2a2c31' }}>
-        <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1, borderBottom: '1px solid #2a2c31' }}>
+      <Box sx={{
+        bgcolor: 'ui.card.bg', color: 'ui.card.fg', border: 1, borderColor: 'ui.card.border', overflow: 'hidden',
+        borderRadius: `${theme.palette.ui.card.radius}px`, boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,27,55,0.06)',
+      }}>
+        <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'ui.card.divider' }}>
           <Select size="small" value={ma} onChange={e => setMa(Number(e.target.value))}
             renderValue={v => `MA ${v}`}
-            sx={{ height: 26, fontSize: 11, color: '#fff', '& fieldset': { borderColor: '#3a3d44' }, '& .MuiSvgIcon-root': { color: '#fff' } }}>
+            sx={{ height: 26, fontSize: 11, color: 'ui.card.fg', '& fieldset': { borderColor: 'ui.card.iconBorder' }, '& .MuiSvgIcon-root': { color: 'ui.card.fg' } }}>
             {MA_OPTIONS.map(n => <MenuItem key={n} value={n}>MA {n}</MenuItem>)}
           </Select>
           <Stack direction="row">
@@ -144,41 +150,41 @@ const CompareVs: React.FC = () => {
               <Box key={r} component="button" onClick={() => { setRange(r); setFrom(''); setTo(''); }}
                 sx={{
                   width: 28, height: 28, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 9, fontWeight: 700, fontFamily: 'inherit',
-                  bgcolor: r === range ? '#6b6f76' : '#2c2e33', color: r === range ? '#fff' : '#9aa1ad',
+                  bgcolor: r === range ? 'ui.chip.activeBg' : 'ui.chip.bg', color: r === range ? 'ui.chip.activeFg' : 'ui.chip.fg',
                 }}>{r}</Box>
             ))}
           </Stack>
-          <Stack direction="row" alignItems="center" gap={0.5} sx={{ border: '1px solid #2a2c31', px: 1, py: 0.5 }}>
-            <Typography sx={{ fontSize: 11, color: '#9aa1ad', mr: 0.5 }}>{t('compare.dateRange')}</Typography>
+          <Stack direction="row" alignItems="center" gap={0.5} sx={{ border: 1, borderColor: 'ui.card.divider', borderRadius: 1.5, px: 1, py: 0.5 }}>
+            <Typography sx={{ fontSize: 11, color: 'ui.card.muted', mr: 0.5 }}>{t('compare.dateRange')}</Typography>
             <TextField type="date" size="small" value={from} onChange={e => setFrom(e.target.value)} sx={dateInputSx} />
-            <span style={{ color: '#9aa1ad' }}>~</span>
+            <Box component="span" sx={{ color: 'ui.card.muted' }}>~</Box>
             <TextField type="date" size="small" value={to} onChange={e => setTo(e.target.value)} sx={dateInputSx} />
           </Stack>
         </Stack>
 
         <Box sx={{ px: 1, position: 'relative', minHeight: 460 }}>
           {selected.length === 0 ? (
-            <Box sx={{ height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5b6070', fontSize: 13 }}>
+            <Box sx={{ height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'ui.card.muted', fontSize: 13 }}>
               {t('compare.pick')}
             </Box>
           ) : (
-            <StockChart ref={chartRef} options={options} dark />
+            <StockChart ref={chartRef} options={options} dark={isDark} />
           )}
           {result.loading && selected.length > 0 && (
             <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#2c2e33', color: '#5b6070', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>◆</Box>
+              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'ui.chip.bg', color: 'ui.card.muted', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>◆</Box>
             </Box>
           )}
         </Box>
 
-        <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={1.5} sx={{ px: 2, py: 1, borderTop: '1px solid #2a2c31' }}>
-          <Divider orientation="vertical" flexItem sx={{ borderColor: '#3a3d44' }} />
+        <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={1.5} sx={{ px: 2, py: 1, borderTop: 1, borderColor: 'ui.card.divider' }}>
+          <Divider orientation="vertical" flexItem sx={{ borderColor: 'ui.card.divider' }} />
           <Tooltip title={t('common.capture')}>
-            <IconButton size="small" onClick={() => chartRef.current?.capture('compare')} sx={{ color: '#9aa1ad', border: '1px solid #3a3d44' }}>📷</IconButton>
+            <IconButton size="small" onClick={() => chartRef.current?.capture('compare')} sx={{ color: 'ui.card.muted', border: 1, borderColor: 'ui.card.iconBorder' }}>📷</IconButton>
           </Tooltip>
-          <Divider orientation="vertical" flexItem sx={{ borderColor: '#3a3d44' }} />
+          <Divider orientation="vertical" flexItem sx={{ borderColor: 'ui.card.divider' }} />
           <Button size="small" onClick={onCsv} disabled={!result.data?.length}
-            sx={{ bgcolor: '#2c2e33', color: '#cfd3da', fontSize: 11, px: 1.5, '&.Mui-disabled': { color: '#5b6070' } }}>⬇ {t('compare.csv')}</Button>
+            sx={{ bgcolor: 'ui.chip.bg', color: 'ui.card.fg', fontSize: 11, px: 1.5, '&:hover': { bgcolor: 'ui.chip.hover' }, '&.Mui-disabled': { color: 'ui.card.muted' } }}>⬇ {t('compare.csv')}</Button>
         </Stack>
       </Box>
     </SidebarLayout>

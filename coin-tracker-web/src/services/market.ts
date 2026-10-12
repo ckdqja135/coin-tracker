@@ -4,7 +4,7 @@ import axios from 'axios';
 const client = axios.create({ baseURL: '/api/market', timeout: 20000 });
 
 export type Interval = '1m' | '5m' | '30m' | '1h' | '4h' | '1d' | '1w' | '1M';
-export type KlineSource = 'binance' | 'binance-futures' | 'upbit' | 'bithumb' | 'yahoo';
+export type KlineSource = 'binance' | 'binance-futures' | 'upbit' | 'bithumb' | 'coinone' | 'korbit' | 'gateio' | 'yahoo';
 export type MetricType = 'oi' | 'lsr' | 'top-lsr' | 'taker' | 'funding';
 export type LongShortExchange = 'binance' | 'bybit' | 'okx';
 
@@ -87,5 +87,11 @@ export type SeriesKind = 'oi-binance' | 'oi-bybit' | 'oi-okx' | 'fng' | 'hashrat
 
 export const fetchSeries = async (kind: SeriesKind, coin: string, interval: Interval, limit: number): Promise<Point[]> => {
   const { data } = await client.get('/series', { params: { kind, coin, interval, limit } });
+  return data.data;
+};
+
+/** since(ms) 이후 캔들을 모두 받는다 (CIM 백필용) */
+export const fetchKlinesSince = async (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
+  const { data } = await client.get('/klines', { params: { source, symbol, interval, since } });
   return data.data;
 };

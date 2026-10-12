@@ -1,4 +1,4 @@
-import { TickerExchange } from '../services/market';
+import { KlineSource, TickerExchange } from '../services/market';
 
 export interface ExchangeMeta {
   id: TickerExchange;
@@ -10,6 +10,10 @@ export interface ExchangeMeta {
   /** TradingView 심볼 */
   tv: (coin: string) => string;
 }
+
+/** 거래소 캔들 조회용 소스/심볼 */
+export const klineOf = (ex: ExchangeMeta, coin: string): { source: KlineSource; symbol: string } =>
+  ({ source: ex.id, symbol: ex.id === 'binance' ? `${coin}USDT` : coin });
 
 export const EXCHANGES: ExchangeMeta[] = [
   { id: 'upbit', label: 'Upbit', color: '#093687', currency: 'KRW', market: c => `KRW-${c}`, tv: c => `UPBIT:${c}KRW` },

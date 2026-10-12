@@ -8,12 +8,12 @@ import logger from '../log/logger';
  */
 
 export type Interval = '1m' | '5m' | '30m' | '1h' | '4h' | '1d' | '1w' | '1M';
-export type KlineSource = 'binance' | 'binance-futures' | 'upbit' | 'bithumb' | 'yahoo';
+export type KlineSource = 'binance' | 'binance-futures' | 'upbit' | 'bithumb' | 'coinone' | 'korbit' | 'gateio' | 'yahoo';
 export type MetricType = 'oi' | 'lsr' | 'top-lsr' | 'taker' | 'funding';
 export type LongShortExchange = 'binance' | 'bybit' | 'okx';
 
 export const INTERVALS: Interval[] = ['1m', '5m', '30m', '1h', '4h', '1d', '1w', '1M'];
-export const KLINE_SOURCES: KlineSource[] = ['binance', 'binance-futures', 'upbit', 'bithumb', 'yahoo'];
+export const KLINE_SOURCES: KlineSource[] = ['binance', 'binance-futures', 'upbit', 'bithumb', 'coinone', 'korbit', 'gateio', 'yahoo'];
 export const METRIC_TYPES: MetricType[] = ['oi', 'lsr', 'top-lsr', 'taker', 'funding'];
 export const LONG_SHORT_EXCHANGES: LongShortExchange[] = ['binance', 'bybit', 'okx'];
 
@@ -142,6 +142,49 @@ const fetchBithumbKlines = async (symbol: string, interval: Interval, limit: num
     return candles.slice(-clamp(limit, 1, 5000));
 };
 
+const COINONE_INTERVAL: Record<Interval, string> = {
+    '1m': '1m', '5m': '5m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w', '1M': '1mon',
+};
+
+const fetchCoinoneKlines = async (symbol: string, interval: Interval, limit: number): Promise<Candle[]> => {
+    const coin = symbol.replace(/^KRW-/, '').toUpperCase();
+    const { data } = await http.get(`https://api.coinone.co.kr/public/v2/chart/KRW/${coin}`, {
+        params: { interval: COINONE_INTERVAL[interval], size: clamp(limit, 1, 500) },
+    });
+    if (data.result !== 'success') throw new Error(`Coinone error: ${data.error_code}`);
+    return data.chart
+        .map((k: any) => ({ t: +k.timestamp, o: +k.open, h: +k.high, l: +k.low, c: +k.close, v: +k.target_volume }))
+        .sort((a: Candle, b: Candle) => a.t - b.t);
+};
+
+const KORBIT_INTERVAL: Record<Interval, string> = {
+    '1m': '1', '5m': '5', '30m': '30', '1h': '60', '4h': '240', '1d': '1D', '1w': '1W', '1M': '1W',
+};
+
+const fetchKorbitKlines = async (symbol: string, interval: Interval, limit: number): Promise<Candle[]> => {
+    const coin = symbol.replace(/^KRW-/, '').toLowerCase();
+    const { data } = await http.get('https://api.korbit.co.kr/v2/candles', {
+        params: { symbol: `${coin}_krw`, interval: KORBIT_INTERVAL[interval], limit: clamp(limit, 1, 200) },
+    });
+    if (!data.success) throw new Error('Korbit error');
+    return data.data
+        .map((k: any) => ({ t: +k.timestamp, o: +k.open, h: +k.high, l: +k.low, c: +k.close, v: +k.volume }))
+        .sort((a: Candle, b: Candle) => a.t - b.t);
+};
+
+const GATE_INTERVAL: Record<Interval, string> = {
+    '1m': '1m', '5m': '5m', '30m': '30m', '1h': '1h', '4h': '4h', '1d': '1d', '1w': '7d', '1M': '30d',
+};
+
+const fetchGateKlines = async (symbol: string, interval: Interval, limit: number): Promise<Candle[]> => {
+    const coin = symbol.replace(/_?USDT$/, '').toUpperCase();
+    const { data } = await http.get('https://api.gateio.ws/api/v4/spot/candlesticks', {
+        params: { currency_pair: `${coin}_USDT`, interval: GATE_INTERVAL[interval], limit: clamp(limit, 1, 1000) },
+    });
+    // [time(s), quote_volume, close, high, low, open, base_volume, closed]
+    return data.map((k: string[]) => ({ t: +k[0] * 1000, o: +k[5], h: +k[3], l: +k[4], c: +k[2], v: +k[6] }));
+};
+
 const YAHOO_INTERVAL: Record<Interval, { interval: string; resampleTo?: Interval }> = {
     '1m': { interval: '1m' },
     '5m': { interval: '5m' },
@@ -237,6 +280,9 @@ export const getKlines = (source: KlineSource, symbol: string, interval: Interva
             case 'binance-futures': return fetchBinanceKlines('https://fapi.binance.com', symbol, interval, limit);
             case 'upbit': return fetchUpbitKlines(symbol, interval, limit);
             case 'bithumb': return fetchBithumbKlines(symbol, interval, limit);
+            case 'coinone': return fetchCoinoneKlines(symbol, interval, limit);
+            case 'korbit': return fetchKorbitKlines(symbol, interval, limit);
+            case 'gateio': return fetchGateKlines(symbol, interval, limit);
             case 'yahoo': return fetchYahooKlines(symbol, interval, limit);
         }
     });
@@ -654,5 +700,116 @@ export const getSeries = (kind: SeriesKind, coin: string, interval: Interval, li
                     : data.difficulty.map((d: any) => ({ t: d.time * 1000, v: d.difficulty / 1e12 })); // T
             }
         }
+    });
+};
+
+// ---------------------------------------------------------------------------
+// 특정 시각 이후 캔들 (CIM: 한국시간 09시부터 1분봉)
+// 거래소마다 1회 조회 개수 제한이 달라 시간 기준으로 페이지를 넘긴다.
+// ---------------------------------------------------------------------------
+const MAX_SINCE_POINTS = 1500;
+
+/** 업비트·빗썸(v1)은 같은 형식. to 파라미터: 업비트는 UTC, 빗썸은 KST 문자열 */
+const fetchUpbitLikeSince = async (
+    base: string, coin: string, interval: Interval, since: number, tz: 'utc' | 'kst',
+): Promise<Candle[]> => {
+    const unit = INTERVAL_MS[interval] / MIN_MS;
+    const out: Candle[] = [];
+    let to: string | undefined;
+    for (let page = 0; page < 10; page++) {
+        const { data } = await http.get(`${base}/v1/candles/minutes/${unit}`, {
+            params: { market: `KRW-${coin}`, count: 200, ...(to ? { to } : {}) },
+        });
+        if (!Array.isArray(data) || data.length === 0) break;
+        for (const k of data) {
+            out.push({
+                t: new Date(k.candle_date_time_utc + 'Z').getTime(),
+                o: k.opening_price, h: k.high_price, l: k.low_price, c: k.trade_price, v: k.candle_acc_trade_volume,
+            });
+        }
+        const oldest = data[data.length - 1];
+        if (new Date(oldest.candle_date_time_utc + 'Z').getTime() <= since || data.length < 200) break;
+        to = (tz === 'utc' ? oldest.candle_date_time_utc : oldest.candle_date_time_kst).replace('T', ' ');
+    }
+    return out;
+};
+
+const fetchSince = async (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
+    const step = INTERVAL_MS[interval];
+    const now = Date.now();
+    const coin = symbol.replace(/^KRW-/, '').replace(/_?(USDT|KRW)$/, '').toUpperCase();
+    const out: Candle[] = [];
+
+    switch (source) {
+        case 'upbit':
+            return fetchUpbitLikeSince('https://api.upbit.com', coin, interval, since, 'utc');
+        case 'bithumb':
+            return fetchUpbitLikeSince('https://api.bithumb.com', coin, interval, since, 'kst');
+        case 'binance':
+        case 'binance-futures': {
+            const futures = source === 'binance-futures';
+            let start = since;
+            for (let page = 0; page < 3 && start < now; page++) {
+                const { data } = await http.get(`https://${futures ? 'fapi' : 'api'}.binance.com${futures ? '/fapi/v1' : '/api/v3'}/klines`, {
+                    params: { symbol: `${coin}USDT`, interval, startTime: start, limit: 1000 },
+                });
+                data.forEach((k: any[]) => out.push({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] }));
+                if (data.length < 1000) break;
+                start = data[data.length - 1][0] + step;
+            }
+            return out;
+        }
+        case 'coinone': {
+            let end = now;
+            for (let page = 0; page < 5; page++) {
+                const { data } = await http.get(`https://api.coinone.co.kr/public/v2/chart/KRW/${coin}`, {
+                    params: { interval: COINONE_INTERVAL[interval], size: 500, timestamp: end },
+                });
+                if (data.result !== 'success' || !data.chart.length) break;
+                data.chart.forEach((k: any) => out.push({ t: +k.timestamp, o: +k.open, h: +k.high, l: +k.low, c: +k.close, v: +k.target_volume }));
+                const oldest = Math.min(...data.chart.map((k: any) => +k.timestamp));
+                if (oldest <= since || data.is_last) break;
+                end = oldest - 1;
+            }
+            return out;
+        }
+        case 'korbit': {
+            let end = now;
+            for (let page = 0; page < 10; page++) {
+                const { data } = await http.get('https://api.korbit.co.kr/v2/candles', {
+                    params: { symbol: `${coin.toLowerCase()}_krw`, interval: KORBIT_INTERVAL[interval], limit: 200, end },
+                });
+                if (!data.success || !data.data.length) break;
+                data.data.forEach((k: any) => out.push({ t: +k.timestamp, o: +k.open, h: +k.high, l: +k.low, c: +k.close, v: +k.volume }));
+                const oldest = Math.min(...data.data.map((k: any) => +k.timestamp));
+                if (oldest <= since || data.data.length < 200) break;
+                end = oldest - 1;
+            }
+            return out;
+        }
+        case 'gateio': {
+            // from/to 구간당 최대 1000개
+            for (let from = since; from < now; from += step * 1000) {
+                const to = Math.min(now, from + step * 999);
+                const { data } = await http.get('https://api.gateio.ws/api/v4/spot/candlesticks', {
+                    params: { currency_pair: `${coin}_USDT`, interval: GATE_INTERVAL[interval], from: Math.floor(from / 1000), to: Math.floor(to / 1000) },
+                });
+                data.forEach((k: string[]) => out.push({ t: +k[0] * 1000, o: +k[5], h: +k[3], l: +k[4], c: +k[2], v: +k[6] }));
+            }
+            return out;
+        }
+        case 'yahoo':
+            return getKlines('yahoo', symbol, interval, Math.ceil((now - since) / step) + 1);
+    }
+};
+
+export const getKlinesSince = (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
+    // 같은 분 안의 요청은 캐시를 공유한다
+    const key = `since:${source}:${symbol}:${interval}:${since}:${Math.floor(Date.now() / 30_000)}`;
+    return cached(key, 30_000, async () => {
+        const list = await fetchSince(source, symbol, interval, since);
+        const map = new Map<number, Candle>();
+        list.forEach(k => { if (k.t >= since) map.set(k.t, k); });
+        return Array.from(map.values()).sort((a, b) => a.t - b.t).slice(-MAX_SINCE_POINTS);
     });
 };

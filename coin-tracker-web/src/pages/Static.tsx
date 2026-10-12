@@ -124,7 +124,7 @@ export const Blog: React.FC = () => {
     && (!q || p.title[lang].toLowerCase().includes(q) || p.body[lang].some(b => b.toLowerCase().includes(q))));
   const pill = (active: boolean) => ({
     borderRadius: 99, px: 1.8, py: 0.4, fontSize: 12, fontWeight: 700, minWidth: 0,
-    bgcolor: active ? '#3d6cf4' : '#23262d', color: '#fff', '&:hover': { bgcolor: active ? '#3159d6' : '#33363d' },
+    bgcolor: active ? 'primary.main' : 'ui.pill.bg', color: active ? '#fff' : 'ui.pill.fg', '&:hover': { bgcolor: active ? 'primary.dark' : 'ui.pill.hover' },
   });
   return (
     <>

@@ -53,7 +53,7 @@ const useUniverse = (tf: Tf) => useAsync(async () => {
 
 /** 연한 파스텔 색: +1 청록 ~ 0 회색 ~ -1 빨강 */
 const cellColor = (r: number | null) => {
-  if (r == null) return '#eef1f4';
+  if (r == null) return 'surface.empty';
   const a = Math.min(1, Math.abs(r));
   return r >= 0 ? `rgba(95,191,171,${0.15 + a * 0.85})` : `rgba(229,115,115,${0.15 + a * 0.85})`;
 };
@@ -64,14 +64,17 @@ const TfChips: React.FC<{ value: Tf; onChange: (t: Tf) => void }> = ({ value, on
       <Box key={tf} component="button" onClick={() => onChange(tf)}
         sx={{
           width: 26, height: 26, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 9, fontWeight: 700, fontFamily: 'inherit',
-          bgcolor: tf === value ? '#6b6f76' : '#2c2e33', color: tf === value ? '#fff' : '#9aa1ad',
+          bgcolor: tf === value ? 'ui.chip.activeBg' : 'ui.chip.bg', color: tf === value ? 'ui.chip.activeFg' : 'ui.chip.fg',
         }}>{tf}</Box>
     ))}
   </Stack>
 );
 
 const Panel: React.FC<{ title: string; actions?: React.ReactNode; children: React.ReactNode }> = ({ title, actions, children }) => (
-  <Box sx={{ border: 1, borderColor: 'text.secondary', borderRadius: 0.5, p: 2 }}>
+  <Box sx={theme => ({
+    border: 1, borderColor: 'ui.card.border', borderRadius: `${theme.palette.ui.card.radius}px`, p: 2,
+    bgcolor: 'ui.card.bg', boxShadow: theme.palette.mode === 'dark' ? 'none' : '0 1px 3px rgba(0,27,55,0.06)',
+  })}>
     <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
       <Typography sx={{ fontSize: 15, fontWeight: 800, flexGrow: 1 }}>{title}</Typography>
       {actions}
@@ -101,7 +104,7 @@ const VsBars: React.FC<{ baseId: string; title: string }> = ({ baseId, title }) 
           {rows.map(r => (
             <Box key={r.id} sx={{ mb: 2.5 }}>
               <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>{r.name}</Typography>
-              <Box sx={{ position: 'relative', height: 16, bgcolor: '#e6e9f2', borderRadius: 99 }}>
+              <Box sx={{ position: 'relative', height: 16, bgcolor: 'surface.track', borderRadius: 99 }}>
                 {r.r != null && Math.abs(r.r) > 0.005 && (
                   <Box sx={{
                     position: 'absolute', top: 0, bottom: 0, bgcolor: r.r >= 0 ? UP : DOWN,
@@ -148,14 +151,14 @@ const Heatmap: React.FC = () => {
                   {UNIVERSE.map((col, j) => {
                     if (j > i) return <Box key={col.id} />;
                     if (i === j) {
-                      return <Box key={col.id} sx={{ bgcolor: '#eef1f4', height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0b6c0' }}>·</Box>;
+                      return <Box key={col.id} sx={{ bgcolor: 'surface.empty', height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0b6c0' }}>·</Box>;
                     }
                     const r = matrix[i][j];
                     return (
                       <Tooltip key={col.id} title={`${row.name} × ${col.name}`}>
                         <Box sx={{
                           bgcolor: cellColor(r), height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, color: r != null && Math.abs(r) > 0.6 ? '#fff' : '#333', fontVariantNumeric: 'tabular-nums',
+                          fontSize: 12, color: r != null && Math.abs(r) > 0.6 ? '#fff' : 'text.primary', fontVariantNumeric: 'tabular-nums',
                         }}>
                           {r == null ? 'N/A' : r.toFixed(2)}
                         </Box>

@@ -72,7 +72,7 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, base, items, storageKe
       <Stack direction="row" alignItems="center" gap={1.5} sx={{ mb: 2.5 }}>
         <Box sx={{ width: 30, height: 30, borderRadius: '50%', border: 1, borderColor: 'text.secondary', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>☰</Box>
         <Typography sx={{ fontSize: 22, fontWeight: 800 }}>
-          {base && <Box component="span" sx={{ color: 'text.disabled' }}>{name} </Box>}
+          {base && <Box component="span" sx={{ color: 'text.secondary' }}>{name} </Box>}
           {base && <Box component="span" sx={{ color: 'text.secondary' }}>VS </Box>}
           <Box component="span" sx={{ color: '#3d6cf4' }}>{selectedLabel ?? (base ? t('cards.all') : name)}</Box>
         </Typography>

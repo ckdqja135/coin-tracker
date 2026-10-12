@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { useTheme } from '@mui/material/styles';
+import { useI18n } from '../i18n';
+
+const hexToRgba = (hex: string) => {
+  const m = hex.replace('#', '');
+  const n = parseInt(m.length === 3 ? m.split('').map(c => c + c).join('') : m, 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 1)`;
+};
 
 interface Props {
   /** embed-widget-*.js 이름 (예: advanced-chart, events) */
@@ -12,8 +19,11 @@ interface Props {
 const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
   const ref = useRef<HTMLDivElement>(null);
   const theme = useTheme();
+  // 위젯 언어는 사이트 언어를 따른다
+  const locale = useI18n().lang === 'ko' ? 'kr' : 'en';
   const mode = theme.palette.mode;
-  const bg = theme.palette.background.paper;
+  // 위젯은 hex 대신 rgba 형식의 색만 받는다
+  const bg = hexToRgba(theme.palette.background.paper);
   const configKey = JSON.stringify(config);
 
   useEffect(() => {
@@ -32,7 +42,7 @@ const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
       script.innerHTML = JSON.stringify({
         ...config, colorTheme: mode, isTransparent: false, backgroundColor: bg,
         gridColor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-        width: '100%', height: '100%', locale: 'kr',
+        width: '100%', height: '100%', locale,
       });
       container.appendChild(script);
     }, 0);
@@ -43,7 +53,7 @@ const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
       container.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widget, configKey, mode, bg]);
+  }, [widget, configKey, mode, bg, locale]);
 
   return <div ref={ref} style={{ height, width: '100%' }} />;
 };

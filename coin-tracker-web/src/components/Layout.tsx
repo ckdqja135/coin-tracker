@@ -25,7 +25,7 @@ const LangToggle: React.FC = () => {
   const { lang, setLang } = useI18n();
   return (
     <Select size="small" value={lang} onChange={e => setLang(e.target.value as 'en' | 'ko')} variant="standard" disableUnderline
-      sx={{ bgcolor: '#16191f', color: '#fff', borderRadius: 99, px: 1.5, fontSize: 12, fontWeight: 700, '& .MuiSvgIcon-root': { color: '#fff' } }}>
+      sx={{ bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', borderRadius: 99, px: 1.5, fontSize: 12, fontWeight: 700, '& .MuiSvgIcon-root': { color: 'ui.pill.fg' } }}>
       <MenuItem value="en">EN</MenuItem>
       <MenuItem value="ko">KO</MenuItem>
     </Select>
@@ -35,10 +35,13 @@ const LangToggle: React.FC = () => {
 const ThemeToggle: React.FC = () => {
   const { t } = useI18n();
   const { mode, toggle } = useThemeMode();
+  const icon = (active: boolean) => ({ color: active ? 'ui.header.active' : 'ui.header.muted', fontSize: 15, lineHeight: 1, transition: 'color .2s' });
+  // 달/해를 나란히 두고 현재 모드를 밝게 표시
   return (
     <Tooltip title={t('theme.toggle')}>
-      <IconButton size="small" onClick={toggle} sx={{ color: '#fff', fontSize: 16 }} aria-label={t('theme.toggle')}>
-        {mode === 'dark' ? '☀' : '☾'}
+      <IconButton size="small" onClick={toggle} aria-label={t('theme.toggle')} sx={{ gap: 0.6, borderRadius: 99, px: 1 }}>
+        <Box component="span" sx={icon(mode === 'dark')}>☾</Box>
+        <Box component="span" sx={icon(mode === 'light')}>☀</Box>
       </IconButton>
     </Tooltip>
   );
@@ -49,18 +52,18 @@ const Header: React.FC = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <AppBar position="sticky" elevation={0} sx={{ bgcolor: '#2a2d33', color: '#fff' }}>
+    <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'ui.header.bg', color: 'ui.header.fg', borderBottom: 1, borderColor: 'ui.header.border' }}>
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 56 } }}>
-          <IconButton sx={{ display: { md: 'none' }, color: '#fff' }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
+          <IconButton sx={{ display: { md: 'none' }, color: 'ui.header.fg' }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
           <Typography component={RouterLink} to="/" variant="h6"
             sx={{ fontWeight: 800, color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: -0.5 }}>
-            <Box component="span" sx={{ bgcolor: '#fff', color: '#2a2d33', borderRadius: 1, px: 0.5, mr: 0.8, fontSize: 15 }}>◆</Box>Coin Tracker
+            <Box component="span" sx={{ bgcolor: 'primary.main', color: '#fff', borderRadius: 1, px: 0.5, mr: 0.8, fontSize: 15 }}>◆</Box>Coin Tracker
           </Typography>
           <Stack direction="row" justifyContent="center" sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 1 }}>
             {NAV.map(n => (
               <Button key={n.to} component={NavLink} to={n.to} color="inherit"
-                sx={{ fontSize: 13, fontWeight: 500, color: '#fff', px: 1.3, '&.active': { color: '#7fa4ff' } }}>
+                sx={{ fontSize: 13, fontWeight: 600, color: 'ui.header.fg', px: 1.3, '&.active': { color: 'ui.header.active' } }}>
                 {t(n.key)}
               </Button>
             ))}
@@ -91,22 +94,22 @@ const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
   const { t } = useI18n();
   const col = (title: string, links: { to: string; label: string }[]) => (
     <Box>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#9aa6c4' }}>{title}</Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'ui.footer.title' }}>{title}</Typography>
       <Stack spacing={0.5}>
         {links.map(l => (
-          <Link key={l.to + l.label} component={RouterLink} to={l.to} color="#e6e8ec" underline="hover" fontSize={13}>{l.label}</Link>
+          <Link key={l.to + l.label} component={RouterLink} to={l.to} underline="hover" fontSize={13} sx={{ color: 'ui.footer.fg' }}>{l.label}</Link>
         ))}
       </Stack>
     </Box>
   );
 
   return (
-    <Box component="footer" sx={{ mt: full ? 0 : 8, pt: 4, pb: 2.5, bgcolor: '#2a2d33', color: '#fff' }}>
+    <Box component="footer" sx={{ mt: full ? 0 : 8, pt: 4, pb: 2.5, bgcolor: 'ui.footer.bg', color: 'ui.footer.title', borderTop: 1, borderColor: 'ui.footer.border' }}>
       <Container maxWidth="lg">
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={6}>
           <Box sx={{ maxWidth: 320 }}>
-            <Typography sx={{ fontWeight: 800 }}><Box component="span" sx={{ bgcolor: '#3d6cf4', borderRadius: 1, px: 0.5, mr: 0.8 }}>◆</Box>Coin Tracker</Typography>
-            <Typography variant="body2" sx={{ mt: 1, color: '#9aa1ad' }}>{t('footer.disclaimer')}</Typography>
+            <Typography sx={{ fontWeight: 800 }}><Box component="span" sx={{ bgcolor: 'primary.main', color: '#fff', borderRadius: 1, px: 0.5, mr: 0.8 }}>◆</Box>Coin Tracker</Typography>
+            <Typography variant="body2" sx={{ mt: 1, color: 'ui.footer.muted' }}>{t('footer.disclaimer')}</Typography>
           </Box>
           {col(t('footer.company'), [
             { to: '/about', label: t('nav.about') },
@@ -118,12 +121,12 @@ const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
         </Stack>
       </Container>
       {/* 하단 줄: 저작권 | 문의 | 언어 선택 */}
-      <Box sx={{ borderTop: '1px solid #3a3d44', mt: 4, pt: 2.5 }}>
+      <Box sx={{ borderTop: 1, borderColor: 'ui.footer.border', mt: 4, pt: 2.5 }}>
         <Container maxWidth="lg">
-          <Stack direction="row" alignItems="center" gap={1.5} sx={{ fontSize: 11, color: '#9aa1ad' }}>
+          <Stack direction="row" alignItems="center" gap={1.5} sx={{ fontSize: 11, color: 'ui.footer.muted' }}>
             <span>COPYRIGHTS © {new Date().getFullYear()} Coin Tracker</span>
-            <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>|</Box>
-            <Link component={RouterLink} to="/about#contact" underline="hover" sx={{ color: '#cfd3da', fontSize: 11 }}>✉ {t('nav.contact')}</Link>
+            <Box component="span" sx={{ color: 'ui.footer.fg', fontWeight: 700 }}>|</Box>
+            <Link component={RouterLink} to="/about#contact" underline="hover" sx={{ color: 'ui.footer.fg', fontSize: 11 }}>✉ {t('nav.contact')}</Link>
             <Box sx={{ flexGrow: 1 }} />
             <span>{t('footer.language')}</span>
             <LangToggle />

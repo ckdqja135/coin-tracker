@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Button, IconButton, Menu, MenuItem, Select, Stack, Tooltip, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useI18n } from '../i18n';
 import { fmtCompact } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
@@ -9,7 +10,6 @@ import { fetchTickers } from '../services/market';
 const COINS = [{ id: 'BTC', name: 'Bitcoin' }, { id: 'ETH', name: 'Ethereum' }] as const;
 const LONG = '#4dbf9a';
 const SHORT = '#e06666';
-const CARD = '#1f2024';
 const EX_META: Record<FeedExchange, { label: string; color: string }> = {
   binance: { label: 'Binance', color: '#f0b90b' },
   bybit: { label: 'Bybit', color: '#f7a600' },
@@ -31,7 +31,7 @@ const tier = (usd: number) => (usd >= 10_000_000 ? 3 : usd >= 1_000_000 ? 2 : 1)
 const Drops: React.FC<{ usd: number; color: string }> = ({ usd, color }) => (
   <Stack direction="row" gap={0.4}>
     {[1, 2, 3].map(i => (
-      <Box key={i} sx={{ width: 7, height: 10, bgcolor: i <= tier(usd) ? color : '#c9ccd2', borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%' }} />
+      <Box key={i} sx={{ width: 7, height: 10, bgcolor: i <= tier(usd) ? color : 'ui.chip.hover', borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%' }} />
     ))}
   </Stack>
 );
@@ -69,10 +69,11 @@ const Gauge: React.FC<{ longShare: number | null; net: number; unit: string }> =
   const share = longShare ?? 0.5;
   const isLong = net >= 0;
   const color = isLong ? LONG : SHORT;
+  const inner = useTheme().palette.ui.chip.bg;
   return (
     <Box sx={{ position: 'relative', width: 84, height: 84 }}>
       <svg width="84" height="84" viewBox="0 0 84 84">
-        <circle cx="42" cy="42" r={r + 6} fill="#111214" stroke={color} strokeOpacity={0.25} strokeWidth={1} />
+        <circle cx="42" cy="42" r={r + 6} fill={inner} stroke={color} strokeOpacity={0.25} strokeWidth={1} />
         <circle cx="42" cy="42" r={r} fill="none" stroke={SHORT} strokeWidth={4} strokeDasharray={`${c * (1 - share)} ${c}`}
           transform={`rotate(${-90 + share * 360} 42 42)`} strokeLinecap="round" />
         <circle cx="42" cy="42" r={r} fill="none" stroke={LONG} strokeWidth={4} strokeDasharray={`${c * share} ${c}`}
@@ -103,9 +104,9 @@ const ExchangeCard: React.FC<{
   const recent = trades.filter(t => t.exchange === ex).slice(0, 3);
 
   return (
-    <Box sx={{ bgcolor: CARD, color: '#fff', borderRadius: 1.5, position: 'relative', mb: 3, border: '1px solid #2c2e33', overflow: 'hidden' }}>
+    <Box sx={theme => ({ bgcolor: 'ui.card.bg', color: 'ui.card.fg', borderRadius: `${theme.palette.ui.card.radius}px`, position: 'relative', mb: 3, border: 1, borderColor: 'ui.card.border', overflow: 'hidden' })}>
       <Select size="small" value={win.key} onChange={e => setWin(WINDOWS.find(w => w.key === e.target.value)!)} variant="standard" disableUnderline
-        sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#111214', color: '#fff', fontSize: 11, px: 1, borderBottomLeftRadius: 6, '& .MuiSvgIcon-root': { color: '#fff', fontSize: 14 } }}>
+        sx={{ position: 'absolute', top: 0, right: 0, bgcolor: 'ui.chip.bg', color: 'ui.card.fg', fontSize: 11, px: 1, borderBottomLeftRadius: 6, '& .MuiSvgIcon-root': { color: 'ui.card.fg', fontSize: 14 } }}>
         {WINDOWS.map(w => <MenuItem key={w.key} value={w.key} sx={{ fontSize: 12 }}>{w.key}</MenuItem>)}
       </Select>
       <Box sx={{ p: 2 }}>
@@ -127,18 +128,18 @@ const ExchangeCard: React.FC<{
           </Box>
         </Stack>
       </Box>
-      <Box sx={{ borderTop: '1px solid #2c2e33', mx: 2 }} />
+      <Box sx={{ borderTop: 1, borderColor: 'ui.card.divider', mx: 2 }} />
       <Box sx={{ p: 2, pt: 1.5 }}>
         <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
           <Button size="small" onClick={() => setInCoin(v => !v)}
-            sx={{ bgcolor: '#1d2a4a', color: '#6f9cff', fontSize: 10, minWidth: 0, px: 1, py: 0.2 }}>{inCoin ? coin : 'USD'} ⇄</Button>
+            sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, fontSize: 10, minWidth: 0, px: 1, py: 0.2 }}>{inCoin ? coin : 'USD'} ⇄</Button>
         </Stack>
         {recent.map(t => (
           <Stack key={t.id} direction="row" alignItems="center" gap={1.5} sx={{ py: 0.4, fontSize: 11 }}>
             <Typography sx={{ fontSize: 11, fontWeight: 700, width: 80, fontVariantNumeric: 'tabular-nums' }}>$ {t.price.toFixed(2)}</Typography>
             <SizeBadge usd={t.usd} side={t.side} />
             <Drops usd={t.usd} color={t.side === 'buy' ? LONG : SHORT} />
-            <Typography sx={{ fontSize: 11, color: '#9aa1ad', ml: 'auto' }}>{age(now, t.time)}</Typography>
+            <Typography sx={{ fontSize: 11, color: 'ui.card.muted', ml: 'auto' }}>{age(now, t.time)}</Typography>
           </Stack>
         ))}
       </Box>
@@ -181,7 +182,7 @@ const LongShort: React.FC = () => {
   const chgAbs = tk && tk.change24h != null ? tk.price - tk.price / (1 + tk.change24h / 100) : null;
   const coinName = COINS.find(c => c.id === coin)!.name;
 
-  const roundBtn = { width: 32, height: 32, border: 1, borderColor: 'text.secondary', color: 'text.primary', fontSize: 13 };
+  const roundBtn = { width: 32, height: 32, border: 1, borderColor: 'ui.card.border', color: 'text.primary', fontSize: 13 };
 
   return (
     <Box>
@@ -189,7 +190,7 @@ const LongShort: React.FC = () => {
       <Stack direction="row" gap={1} sx={{ mb: 3 }}>
         {COINS.map(c => (
           <Button key={c.id} onClick={() => setCoin(c.id)}
-            sx={{ borderRadius: 99, px: 2, py: 0.6, fontSize: 13, fontWeight: 700, bgcolor: coin === c.id ? '#3d6cf4' : '#23262d', color: '#fff', '&:hover': { bgcolor: coin === c.id ? '#3159d6' : '#33363d' } }}>
+            sx={{ borderRadius: 99, px: 2, py: 0.6, fontSize: 13, fontWeight: 700, bgcolor: coin === c.id ? 'primary.main' : 'ui.pill.bg', color: coin === c.id ? '#fff' : 'ui.pill.fg', '&:hover': { bgcolor: coin === c.id ? 'primary.dark' : 'ui.pill.hover' } }}>
             {c.name}
           </Button>
         ))}
@@ -202,8 +203,8 @@ const LongShort: React.FC = () => {
           ))}
         </Box>
 
-        <Box sx={{ border: 1, borderColor: 'text.secondary', borderRadius: 0.5, p: 2, minHeight: 600 }}>
-          <Stack direction="row" alignItems="center" gap={1} sx={{ pb: 2, borderBottom: 1, borderColor: 'text.secondary' }}>
+        <Box sx={theme => ({ border: 1, borderColor: 'ui.card.border', borderRadius: `${theme.palette.ui.card.radius}px`, p: 2, minHeight: 600 })}>
+          <Stack direction="row" alignItems="center" gap={1} sx={{ pb: 2, borderBottom: 1, borderColor: 'ui.card.divider' }}>
             <Typography sx={{ fontSize: 17, fontWeight: 800, flexGrow: 1 }}>{t('ls.significant')}</Typography>
             <Tooltip title={muted ? t('ls.unmute') : t('ls.mute')}>
               <IconButton size="small" sx={roundBtn} onClick={() => setMuted(m => !m)}>{muted ? '🔇' : '🔊'}</IconButton>
@@ -223,13 +224,13 @@ const LongShort: React.FC = () => {
             </Menu>
           </Stack>
 
-          <Stack direction="row" alignItems="center" sx={{ bgcolor: '#1f2024', color: '#fff', borderRadius: 0.5, px: 1.5, py: 1, mt: 1.5, mb: 1 }}>
+          <Stack direction="row" alignItems="center" sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', borderRadius: 1.5, px: 1.5, py: 1, mt: 1.5, mb: 1 }}>
             <Box sx={{ width: 18, height: 18, borderRadius: '50%', bgcolor: '#f7931a', mr: 1 }} />
             <Typography sx={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{coinName}</Typography>
             <Typography sx={{ fontWeight: 800, fontSize: 16, flex: 1, textAlign: 'center' }}>
               {tk ? `$ ${tk.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '-'}
             </Typography>
-            <Typography sx={{ fontSize: 11, flex: 1, textAlign: 'right', color: (tk?.change24h ?? 0) >= 0 ? '#fff' : SHORT }}>
+            <Typography sx={{ fontSize: 11, flex: 1, textAlign: 'right', color: (tk?.change24h ?? 0) >= 0 ? LONG : SHORT }}>
               {chgAbs != null ? `${chgAbs >= 0 ? '+' : ''}${chgAbs.toFixed(2)}` : ''}&nbsp;&nbsp;
               {tk?.change24h != null ? `${tk.change24h >= 0 ? '+' : ''}${tk.change24h.toFixed(2)} %` : ''}
             </Typography>

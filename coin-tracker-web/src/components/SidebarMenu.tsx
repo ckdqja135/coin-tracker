@@ -31,19 +31,22 @@ const SidebarMenu: React.FC<Props> = ({
 
   return (
     <Box>
-      <Typography sx={{ fontWeight: 800, fontSize: 15, color: '#fff', mb: 2.5 }}>{title}</Typography>
-      <Box sx={{ border: '1px solid #3a3d44', borderRadius: 99, px: 1.5, py: 0.3, display: 'flex', alignItems: 'center', mb: 2 }}>
+      <Typography sx={{ fontWeight: 800, fontSize: 15, color: 'ui.sidebar.title', mb: 2.5 }}>{title}</Typography>
+      <Box sx={{ border: 1, borderColor: 'ui.sidebar.inputBorder', borderRadius: 99, px: 1.5, py: 0.3, display: 'flex', alignItems: 'center', mb: 2 }}>
         <InputBase value={query} onChange={e => onQueryChange(e.target.value)} placeholder={searchPlaceholder}
-          sx={{ flexGrow: 1, color: '#fff', fontSize: 12 }} />
+          sx={{ flexGrow: 1, color: 'ui.sidebar.title', fontSize: 12 }} />
         <span style={{ fontSize: 12 }}>🔍</span>
       </Box>
 
       {onSelect && (
         <Stack direction="row" alignItems="center" onClick={() => onSelect(null)} data-menu-item=""
-          sx={{ py: 1, borderBottom: '1px solid #2a2c31', cursor: 'pointer', color: selected == null ? '#fff' : '#9aa1ad', fontSize: 12 }}>
+          sx={{
+            py: 1, px: 1, borderRadius: 1.5, cursor: 'pointer', fontSize: 12, fontWeight: selected == null ? 700 : 400,
+            color: selected == null ? 'ui.sidebar.activeFg' : 'ui.sidebar.fg', bgcolor: selected == null ? 'ui.sidebar.activeBg' : 'transparent',
+          }}>
           <span style={{ marginRight: 8 }}>⠿</span>
           <Box sx={{ flexGrow: 1 }}>{allLabel}</Box>
-          <Box sx={{ bgcolor: '#23262d', color: '#6f9cff', borderRadius: 99, px: 1.2, fontSize: 11 }}>{total}</Box>
+          <Box sx={{ bgcolor: 'ui.sidebar.badgeBg', color: 'ui.sidebar.badgeFg', borderRadius: 99, px: 1.2, fontSize: 11, fontWeight: 700 }}>{total}</Box>
         </Stack>
       )}
 
@@ -53,7 +56,7 @@ const SidebarMenu: React.FC<Props> = ({
         return (
           <Box key={g.key} sx={{ mt: 2 }}>
             <Stack direction="row" alignItems="center" onClick={() => setClosed(c => ({ ...c, [g.key]: !c[g.key] }))}
-              sx={{ cursor: 'pointer', color: '#4f86ff', fontSize: 12, fontWeight: 600, mb: 0.5 }}>
+              sx={{ cursor: 'pointer', color: 'ui.sidebar.group', fontSize: 12, fontWeight: 700, mb: 0.5 }}>
               <Box sx={{ flexGrow: 1 }}>{g.title}</Box>
               <span style={{ fontSize: 9 }}>{closed[g.key] ? '▼' : '▲'}</span>
             </Stack>
@@ -64,12 +67,15 @@ const SidebarMenu: React.FC<Props> = ({
                   <Stack key={it.id} direction="row" alignItems="center" data-menu-item={onToggle ? undefined : ''}
                     onClick={() => (onToggle ? onToggle(it.id) : onSelect?.(it.id))}
                     sx={{
-                      pl: 1.5, py: 1, borderBottom: '1px solid #2a2c31', cursor: 'pointer', fontSize: 11.5,
-                      color: selected === it.id || isChecked ? '#fff' : '#9aa1ad', '&:hover': { color: '#fff' },
+                      pl: 1.5, pr: 1, py: 1, borderRadius: 1.5, cursor: 'pointer', fontSize: 11.5,
+                      fontWeight: selected === it.id || isChecked ? 700 : 400,
+                      color: selected === it.id || isChecked ? 'ui.sidebar.activeFg' : 'ui.sidebar.fg',
+                      bgcolor: selected === it.id ? 'ui.sidebar.activeBg' : 'transparent',
+                      '&:hover': { color: 'ui.sidebar.activeFg', bgcolor: 'ui.sidebar.activeBg' },
                     }}>
                     <Box sx={{ flexGrow: 1 }}>{it.label}</Box>
                     {onToggle && (
-                      <Checkbox size="small" checked={!!isChecked} sx={{ p: 0, color: '#5b6070', '&.Mui-checked': { color: '#4f86ff' } }} />
+                      <Checkbox size="small" checked={!!isChecked} sx={{ p: 0, color: 'ui.sidebar.muted', '&.Mui-checked': { color: 'ui.sidebar.group' } }} />
                     )}
                   </Stack>
                 );

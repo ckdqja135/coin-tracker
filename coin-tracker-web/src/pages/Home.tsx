@@ -80,13 +80,13 @@ const MarketChart: React.FC<{ coin: string; listed: TickerExchange[]; onClose: (
     <Box>
       <Stack direction="row" gap={1} sx={{ mb: 1.5 }}>
         <Select size="small" value={ex.id} onChange={e => setExId(e.target.value as TickerExchange)}
-          sx={{ minWidth: 220, bgcolor: '#23262d', color: '#fff', fontSize: 13, '& .MuiSvgIcon-root': { color: '#fff' } }}>
+          sx={{ minWidth: 220, bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', fontSize: 13, fontWeight: 600, '& fieldset': { border: 0 }, '& .MuiSvgIcon-root': { color: 'ui.pill.fg' } }}>
           {options.map(id => {
             const m = exchangeMeta(id);
             return <MenuItem key={id} value={id}>{m.market(coin).replace(/[-_/]/g, '').toUpperCase()} - {m.label}</MenuItem>;
           })}
         </Select>
-        <IconButton onClick={onClose} sx={{ bgcolor: '#23262d', color: '#fff', borderRadius: 1, '&:hover': { bgcolor: '#33363d' } }} size="small">✕</IconButton>
+        <IconButton onClick={onClose} sx={{ bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', borderRadius: 1, '&:hover': { bgcolor: 'ui.pill.hover' } }} size="small">✕</IconButton>
       </Stack>
       <Box sx={{ border: 1, borderColor: 'divider' }}>
         <OverviewStrip />
@@ -108,7 +108,8 @@ const CompareTable: React.FC<{
   tickers: Partial<Record<TickerExchange, ExchangeTickers>>; images: Record<string, string | null>;
 }> = ({ coins, base, mode, currency, tickers, images }) => {
   const { t } = useI18n();
-  const dark = '#23262d';
+  const hl = 'ui.highlight.bg';
+  const hlFg = 'ui.highlight.fg';
   const fx = Object.values(tickers).find(x => x?.usdKrw)?.usdKrw ?? null;
   const priceIn = (ex: ExchangeMeta, coin: string, to: Currency) => {
     const tk = tickers[ex.id]?.data[coin];
@@ -122,13 +123,13 @@ const CompareTable: React.FC<{
       <Table size="small" sx={{ minWidth: 760, '& td, & th': { borderColor: 'divider' } }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ bgcolor: dark, width: 130 }}>
+            <TableCell sx={{ bgcolor: hl, width: 130 }}>
               <Tooltip title={mode === 'listing' ? t('home.listingHelp') : t('home.premiumHelp', { ex: base.label })}>
                 <Box component="span" sx={{ color: UP, cursor: 'help' }}>ⓘ</Box>
               </Tooltip>
             </TableCell>
             {columns.map(ex => (
-              <TableCell key={ex.id} align="center" sx={{ bgcolor: ex.id === base.id ? dark : undefined, color: ex.id === base.id ? '#fff' : 'text.secondary' }}>
+              <TableCell key={ex.id} align="center" sx={{ bgcolor: ex.id === base.id ? hl : undefined, color: ex.id === base.id ? hlFg : 'text.secondary' }}>
                 <ExchangeBadge ex={ex} />
                 <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{ex.label}</Typography>
               </TableCell>
@@ -140,7 +141,7 @@ const CompareTable: React.FC<{
             const basePrice = priceIn(base, coin, 'USD');
             return (
               <TableRow key={coin}>
-                <TableCell sx={{ bgcolor: dark, color: '#fff', fontWeight: 700 }}>
+                <TableCell sx={{ bgcolor: hl, color: hlFg, fontWeight: 700 }}>
                   <Stack direction="row" alignItems="center" gap={1}>
                     {images[coin] && <Box component="img" src={images[coin]!} alt="" sx={{ width: 18, height: 18 }} />}
                     {coin}
@@ -150,7 +151,7 @@ const CompareTable: React.FC<{
                   const loaded = !!tickers[ex.id];
                   const price = priceIn(ex, coin, currency);
                   const isBase = ex.id === base.id;
-                  const cellSx = { bgcolor: isBase ? dark : undefined, color: isBase ? '#fff' : undefined, fontWeight: 600, fontSize: 12 };
+                  const cellSx = { bgcolor: isBase ? hl : undefined, color: isBase ? hlFg : undefined, fontWeight: 600, fontSize: 12 };
                   if (!loaded) return <TableCell key={ex.id} align="center" sx={cellSx}>…</TableCell>;
                   if (price == null) {
                     return <TableCell key={ex.id} align="center" sx={{ ...cellSx, color: 'text.disabled', fontSize: 18 }}>✕</TableCell>;
@@ -214,23 +215,23 @@ const Home: React.FC = () => {
 
   const pill = (active: boolean) => ({
     borderRadius: 99, px: 1.8, py: 0.4, fontSize: 13, fontWeight: 700, minWidth: 0,
-    bgcolor: active ? '#3d6cf4' : '#23262d', color: '#fff', '&:hover': { bgcolor: active ? '#3159d6' : '#33363d' },
+    bgcolor: active ? 'primary.main' : 'ui.pill.bg', color: active ? '#fff' : 'ui.pill.fg', '&:hover': { bgcolor: active ? 'primary.dark' : 'ui.pill.hover' },
   });
 
   return (
     <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
       {/* 검색 히어로 */}
       <Stack alignItems="center" sx={{ py: { xs: 5, md: 10 } }}>
-        <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: '#3d6cf4', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, mb: 6 }}>◆</Box>
+        <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'primary.main', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, mb: 6 }}>◆</Box>
         <Box sx={{ width: '100%', maxWidth: 560 }}>
           <CoinSearch onSelect={pick} size="large" />
         </Box>
         <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1} sx={{ mt: 2 }}>
-          {coins.length > 0 && <Chip label={t('home.clearAll')} onClick={clear} sx={{ bgcolor: '#23262d', color: DOWN, fontWeight: 700 }} />}
+          {coins.length > 0 && <Chip label={t('home.clearAll')} onClick={clear} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
           {coins.map(c => (
             <Chip key={c} label={c} onClick={() => { setActive(c); chartRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
               onDelete={() => remove(c)}
-              sx={{ bgcolor: '#23262d', color: '#4dd0a1', fontWeight: 700, '& .MuiChip-deleteIcon': { color: '#6b7280' } }} />
+              sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
           ))}
           {coins.length > 0 && (
             <Button size="small" onClick={() => setResetKey(k => k + 1)} sx={{ color: 'text.secondary', fontWeight: 600 }}>
@@ -253,7 +254,7 @@ const Home: React.FC = () => {
                 renderValue={v => (
                   <Stack direction="row" alignItems="center" gap={1}><ExchangeBadge ex={exchangeMeta(v)} size={18} />{exchangeMeta(v).label}</Stack>
                 )}
-                sx={{ minWidth: 130, bgcolor: '#23262d', color: '#fff', fontSize: 14, '& .MuiSvgIcon-root': { color: '#fff' } }}>
+                sx={{ minWidth: 130, bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', fontSize: 14, fontWeight: 600, '& fieldset': { border: 0 }, '& .MuiSvgIcon-root': { color: 'ui.pill.fg' } }}>
                 {EXCHANGES.map(e => (
                   <MenuItem key={e.id} value={e.id}><Stack direction="row" alignItems="center" gap={1}><ExchangeBadge ex={e} size={18} />{e.label}</Stack></MenuItem>
                 ))}
@@ -266,7 +267,7 @@ const Home: React.FC = () => {
             </Box>
             <Tooltip title={t('home.currencyToggle')}>
               <Button size="small" onClick={() => setCurrency(c => (c === 'USD' ? 'KRW' : 'USD'))}
-                sx={{ bgcolor: '#23262d', color: '#6f9cff', fontSize: 11, minWidth: 0, px: 1, '&:hover': { bgcolor: '#33363d' } }}>
+                sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1, '&:hover': { bgcolor: 'ui.pill.hover' } }}>
                 {currency} ⇄
               </Button>
             </Tooltip>
