@@ -21,10 +21,17 @@ interface Props {
   allLabel?: string;
   total?: number;
   searchPlaceholder: string;
+  /** 검색창을 숨긴다 */
+  hideSearch?: boolean;
+  /** 항목 사이에 구분선을 넣는다 */
+  divided?: boolean;
+  /** 제목 아래에 넣을 영역 (예: 초기화 + 개수) */
+  header?: React.ReactNode;
 }
 
 const SidebarMenu: React.FC<Props> = ({
   title, groups, query, onQueryChange, selected, onSelect, checked, onToggle, allLabel, total, searchPlaceholder,
+  hideSearch, divided, header,
 }) => {
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const q = query.trim().toLowerCase();
@@ -32,11 +39,14 @@ const SidebarMenu: React.FC<Props> = ({
   return (
     <Box>
       <Typography sx={{ fontWeight: 800, fontSize: 15, color: 'ui.sidebar.title', mb: 2.5 }}>{title}</Typography>
-      <Box sx={{ border: 1, borderColor: 'ui.sidebar.inputBorder', borderRadius: 99, px: 1.5, py: 0.3, display: 'flex', alignItems: 'center', mb: 2 }}>
-        <InputBase value={query} onChange={e => onQueryChange(e.target.value)} placeholder={searchPlaceholder}
-          sx={{ flexGrow: 1, color: 'ui.sidebar.title', fontSize: 12 }} />
-        <span style={{ fontSize: 12 }}>🔍</span>
-      </Box>
+      {header}
+      {!hideSearch && (
+        <Box sx={{ border: 1, borderColor: 'ui.sidebar.inputBorder', borderRadius: 99, px: 1.5, py: 0.3, display: 'flex', alignItems: 'center', mb: 2 }}>
+          <InputBase value={query} onChange={e => onQueryChange(e.target.value)} placeholder={searchPlaceholder}
+            sx={{ flexGrow: 1, color: 'ui.sidebar.title', fontSize: 12 }} />
+          <span style={{ fontSize: 12 }}>🔍</span>
+        </Box>
+      )}
 
       {onSelect && (
         <Stack direction="row" alignItems="center" onClick={() => onSelect(null)} data-menu-item=""
@@ -67,7 +77,8 @@ const SidebarMenu: React.FC<Props> = ({
                   <Stack key={it.id} direction="row" alignItems="center" data-menu-item={onToggle ? undefined : ''}
                     onClick={() => (onToggle ? onToggle(it.id) : onSelect?.(it.id))}
                     sx={{
-                      pl: 1.5, pr: 1, py: 1, borderRadius: 1.5, cursor: 'pointer', fontSize: 11.5,
+                      pl: 1.5, pr: 1, py: 1, borderRadius: divided ? 0 : 1.5, cursor: 'pointer', fontSize: 11.5,
+                      borderBottom: divided ? 1 : 0, borderColor: 'ui.sidebar.border',
                       fontWeight: selected === it.id || isChecked ? 700 : 400,
                       color: selected === it.id || isChecked ? 'ui.sidebar.activeFg' : 'ui.sidebar.fg',
                       bgcolor: selected === it.id ? 'ui.sidebar.activeBg' : 'transparent',

@@ -5,6 +5,7 @@ export type Lang = 'en' | 'ko';
 
 const dict = {
   en: {
+    'compare.myCharts': 'My charts', 'compare.myChart': 'My Chart', 'compare.noSaved': 'No saved charts',
     'cards.menu': 'Categories',
     'footer.language': 'Language',
     'blog.all': 'All', 'blog.cat.crypto': 'Crypto', 'blog.cat.commodity': 'Commodity', 'blog.cat.international': 'International',
@@ -65,6 +66,7 @@ const dict = {
     'policy.body': 'Coin Tracker does not require an account and does not collect personal information on its servers. Preferences such as language and saved charts are stored only in your browser (localStorage) and can be removed by clearing site data.',
   },
   ko: {
+    'compare.myCharts': '내 차트', 'compare.myChart': '내 차트', 'compare.noSaved': '저장한 차트가 없습니다',
     'cards.menu': '카테고리',
     'footer.language': '언어',
     'blog.all': '전체', 'blog.cat.crypto': '암호화폐', 'blog.cat.commodity': '원자재', 'blog.cat.international': '해외',

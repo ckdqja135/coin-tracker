@@ -23,6 +23,14 @@ const AUTO: Record<CardRange, { interval: Interval; limit: number }> = {
 const COLORS = ['#3d6cf4', '#f7931a', '#26a69a', '#ab47bc', '#ef5350', '#ffca28', '#00acc1', '#8d6e63'];
 const MAX = 8;
 
+interface SavedChart {
+  name: string;
+  checked: string[];
+  range: CardRange;
+  ma: number;
+  scale: Scale;
+}
+
 const toggleSx = (active: boolean) => ({
   minWidth: 0, px: 1.5, py: 0.3, fontSize: 11, fontWeight: 700, borderRadius: 0,
   bgcolor: active ? 'ui.chip.activeBg' : 'transparent', color: active ? 'ui.chip.activeFg' : 'ui.card.muted', border: 1, borderColor: 'ui.card.iconBorder',
@@ -40,6 +48,14 @@ const CompareVs: React.FC = () => {
   const [range, setRange] = useState<CardRange>('1M');
   const [ma, setMa] = useState(0);
   const [scale, setScale] = useState<Scale>('percent');
+  // 내 차트: 선택 항목·기간·이동평균·스케일을 이름 붙여 저장
+  const [saved, setSaved] = useState<SavedChart[]>(() => storage.get('compareSavedCharts', []));
+  const persistSaved = (next: SavedChart[]) => { setSaved(next); storage.set('compareSavedCharts', next); };
+  const saveCurrent = () => persistSaved([...saved, { name: `${t('compare.myChart')} ${saved.length + 1}`, checked, range, ma, scale }]);
+  const loadSaved = (c: SavedChart) => {
+    setChecked(c.checked); storage.set('compareChecked', c.checked);
+    setRange(c.range); setMa(c.ma); setScale(c.scale); setFrom(''); setTo('');
+  };
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
@@ -115,12 +131,18 @@ const CompareVs: React.FC = () => {
 
   return (
     <SidebarLayout sidebar={
-      <>
-        <SidebarMenu title={t('compare.title')} groups={groups} query={query} onQueryChange={setQuery}
-          checked={checked} onToggle={toggle} searchPlaceholder={t('cards.search')} />
-        <Button size="small" onClick={() => { setChecked([]); storage.set('compareChecked', []); }}
-          sx={{ mt: 2, color: 'ui.sidebar.fg', fontSize: 11 }}>⟲ {t('compare.reset')}</Button>
-      </>
+      <SidebarMenu title={t('compare.title')} groups={groups} query={query} onQueryChange={setQuery}
+        checked={checked} onToggle={toggle} searchPlaceholder={t('cards.search')} hideSearch divided
+        header={
+          <Stack direction="row" alignItems="center" sx={{ pb: 1.5, mb: 1, borderBottom: 1, borderColor: 'ui.sidebar.border' }}>
+            <Button size="small" onClick={() => { setChecked([]); storage.set('compareChecked', []); }}
+              sx={{ color: 'ui.sidebar.fg', fontSize: 12, minWidth: 0, px: 0.5 }}>⟲ {t('compare.reset')}</Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <Box sx={{ bgcolor: 'ui.sidebar.badgeBg', color: 'ui.sidebar.badgeFg', borderRadius: 99, px: 1.2, fontSize: 11, fontWeight: 700 }}>
+              {items.length}
+            </Box>
+          </Stack>
+        } />
     }>
       <Stack direction="row" alignItems="center" gap={1.5} sx={{ mb: 2 }}>
         <Box sx={{ width: 30, height: 30, borderRadius: '50%', border: 1, borderColor: 'text.secondary', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>☰</Box>
@@ -142,6 +164,22 @@ const CompareVs: React.FC = () => {
               <Button key={s} sx={toggleSx(scale === s)} onClick={() => setScale(s)}>{s === 'percent' ? '%' : s.toUpperCase()}</Button>
             ))}
           </Stack>
+          <Select size="small" value="" displayEmpty renderValue={() => t('compare.myCharts')}
+            sx={{ height: 26, minWidth: 120, fontSize: 11, color: 'ui.card.fg', '& fieldset': { borderColor: 'ui.card.iconBorder' }, '& .MuiSvgIcon-root': { color: 'ui.card.fg' } }}>
+            {saved.length === 0 && <MenuItem disabled sx={{ fontSize: 12 }}>{t('compare.noSaved')}</MenuItem>}
+            {saved.map((c, i) => (
+              <MenuItem key={i} sx={{ fontSize: 12, gap: 1 }} onClick={() => loadSaved(c)}>
+                <Box sx={{ flexGrow: 1 }}>{c.name}</Box>
+                <Box component="span" sx={{ color: 'text.disabled', fontSize: 11 }}>{c.range}</Box>
+                <IconButton size="small" sx={{ p: 0.2, fontSize: 12 }} aria-label={t('common.delete')}
+                  onClick={e => { e.stopPropagation(); persistSaved(saved.filter((_, j) => j !== i)); }}>✕</IconButton>
+              </MenuItem>
+            ))}
+            <Divider />
+            <MenuItem sx={{ fontSize: 12, color: 'primary.main', fontWeight: 700 }} onClick={saveCurrent} disabled={!checked.length}>
+              ＋ {t('compare.saveAs')}
+            </MenuItem>
+          </Select>
         </Stack>
 
         <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} justifyContent="flex-end" gap={1.5} sx={{ px: 2, pt: 1.5 }}>
