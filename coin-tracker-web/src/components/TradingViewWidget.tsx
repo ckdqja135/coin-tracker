@@ -11,7 +11,9 @@ interface Props {
 /** TradingView 공개 임베드 위젯 */
 const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const mode = useTheme().palette.mode;
+  const theme = useTheme();
+  const mode = theme.palette.mode;
+  const bg = theme.palette.background.paper;
   const configKey = JSON.stringify(config);
 
   useEffect(() => {
@@ -26,7 +28,12 @@ const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
       const script = document.createElement('script');
       script.src = `https://s3.tradingview.com/external-embedding/embed-widget-${widget}.js`;
       script.async = true;
-      script.innerHTML = JSON.stringify({ ...config, colorTheme: mode, isTransparent: true, width: '100%', height: '100%', locale: 'kr' });
+      // 투명 배경은 다크 모드에서 위젯 기본 흰 배경이 비치므로 테마 배경색을 직접 지정한다
+      script.innerHTML = JSON.stringify({
+        ...config, colorTheme: mode, isTransparent: false, backgroundColor: bg,
+        gridColor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+        width: '100%', height: '100%', locale: 'kr',
+      });
       container.appendChild(script);
     }, 0);
     el.appendChild(container);
@@ -36,7 +43,7 @@ const TradingViewWidget: React.FC<Props> = ({ widget, config, height }) => {
       container.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widget, configKey, mode]);
+  }, [widget, configKey, mode, bg]);
 
   return <div ref={ref} style={{ height, width: '100%' }} />;
 };

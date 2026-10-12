@@ -101,7 +101,7 @@ const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
   );
 
   return (
-    <Box component="footer" sx={{ mt: full ? 0 : 8, py: 4, bgcolor: '#2a2d33', color: '#fff' }}>
+    <Box component="footer" sx={{ mt: full ? 0 : 8, pt: 4, pb: 2.5, bgcolor: '#2a2d33', color: '#fff' }}>
       <Container maxWidth="lg">
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={6}>
           <Box sx={{ maxWidth: 320 }}>
@@ -113,12 +113,23 @@ const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
             { to: '/policy', label: t('nav.policy') },
             { to: '/about#contact', label: t('nav.contact') },
           ])}
-          {col(t('footer.service'), [...NAV, { to: '/live', key: 'nav.live' as TKey }].map(n => ({ to: n.to, label: t(n.key) })))}
+          {col(t('footer.service'), NAV.slice(0, 4).map(n => ({ to: n.to, label: t(n.key) })))}
+          {col(' ', NAV.slice(4).map(n => ({ to: n.to, label: t(n.key) })))}
         </Stack>
-        <Typography variant="caption" sx={{ display: 'block', mt: 3, color: '#9aa1ad' }}>
-          © {new Date().getFullYear()} Coin Tracker
-        </Typography>
       </Container>
+      {/* 하단 줄: 저작권 | 문의 | 언어 선택 */}
+      <Box sx={{ borderTop: '1px solid #3a3d44', mt: 4, pt: 2.5 }}>
+        <Container maxWidth="lg">
+          <Stack direction="row" alignItems="center" gap={1.5} sx={{ fontSize: 11, color: '#9aa1ad' }}>
+            <span>COPYRIGHTS © {new Date().getFullYear()} Coin Tracker</span>
+            <Box component="span" sx={{ color: '#fff', fontWeight: 700 }}>|</Box>
+            <Link component={RouterLink} to="/about#contact" underline="hover" sx={{ color: '#cfd3da', fontSize: 11 }}>✉ {t('nav.contact')}</Link>
+            <Box sx={{ flexGrow: 1 }} />
+            <span>{t('footer.language')}</span>
+            <LangToggle />
+          </Stack>
+        </Container>
+      </Box>
     </Box>
   );
 };

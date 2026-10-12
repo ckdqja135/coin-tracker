@@ -5,6 +5,8 @@ export type Lang = 'en' | 'ko';
 
 const dict = {
   en: {
+    'cards.menu': 'Categories',
+    'footer.language': 'Language',
     'blog.all': 'All', 'blog.cat.crypto': 'Crypto', 'blog.cat.commodity': 'Commodity', 'blog.cat.international': 'International',
     'corr.intro': 'A correlation coefficient ranges from -1 to 1. Values near 1 mean two assets tend to move together, values near -1 mean they tend to move in opposite directions, and values near 0 mean there is little relationship. Calculated from log returns over the selected period.',
     'ls.significant': 'Significant Trades', 'ls.mute': 'Mute', 'ls.unmute': 'Play sound on new trades', 'ls.pause': 'Pause', 'ls.resume': 'Resume', 'ls.settings': 'Minimum trade size', 'ls.minSize': 'Min',
@@ -23,7 +25,7 @@ const dict = {
     'calendar.title': 'Economic Calendar', 'calendar.desc': 'Upcoming macro events that can move the market.',
     'theme.toggle': 'Toggle dark mode',
     'nav.home': 'Home', 'nav.compare': 'Compare VS', 'nav.btc': 'BTC', 'nav.eth': 'ETH', 'nav.markets': 'Markets',
-    'nav.longshort': 'Longs/Shorts', 'nav.correlation': 'Correlation', 'nav.blog': 'Blog', 'nav.live': 'Live',
+    'nav.longshort': 'Longs/Shorts', 'nav.correlation': 'Correlation', 'nav.blog': 'Blog',
     'nav.about': 'About us', 'nav.policy': 'Privacy Policy', 'nav.contact': 'Contact us',
     'search.placeholder': 'Search markets', 'search.empty': 'No results',
     'footer.company': 'Company', 'footer.service': 'Service', 'footer.disclaimer': 'Market data is provided for information only and is not investment advice.',
@@ -63,6 +65,8 @@ const dict = {
     'policy.body': 'Coin Tracker does not require an account and does not collect personal information on its servers. Preferences such as language and saved charts are stored only in your browser (localStorage) and can be removed by clearing site data.',
   },
   ko: {
+    'cards.menu': '카테고리',
+    'footer.language': '언어',
     'blog.all': '전체', 'blog.cat.crypto': '암호화폐', 'blog.cat.commodity': '원자재', 'blog.cat.international': '해외',
     'corr.intro': '상관계수는 -1부터 1 사이의 값입니다. 1에 가까울수록 두 자산이 같은 방향으로, -1에 가까울수록 반대 방향으로 움직이는 경향이 있으며, 0에 가까우면 관계가 거의 없다는 뜻입니다. 선택한 기간의 로그 수익률로 계산합니다.',
     'ls.significant': '주요 체결', 'ls.mute': '소리 끄기', 'ls.unmute': '새 체결 알림음 켜기', 'ls.pause': '일시정지', 'ls.resume': '다시 시작', 'ls.settings': '최소 체결 규모', 'ls.minSize': '최소',
@@ -81,7 +85,7 @@ const dict = {
     'calendar.title': '경제 캘린더', 'calendar.desc': '시장에 영향을 줄 수 있는 주요 경제 일정입니다.',
     'theme.toggle': '다크 모드 전환',
     'nav.home': '홈', 'nav.compare': '비교 차트', 'nav.btc': 'BTC', 'nav.eth': 'ETH', 'nav.markets': '마켓',
-    'nav.longshort': '롱/숏', 'nav.correlation': '상관관계', 'nav.blog': '블로그', 'nav.live': '실시간',
+    'nav.longshort': '롱/숏', 'nav.correlation': '상관관계', 'nav.blog': '블로그',
     'nav.about': '소개', 'nav.policy': '개인정보 처리방침', 'nav.contact': '문의하기',
     'search.placeholder': '마켓 검색', 'search.empty': '검색 결과 없음',
     'footer.company': '회사', 'footer.service': '서비스', 'footer.disclaimer': '모든 시장 데이터는 참고용이며 투자 권유가 아닙니다.',

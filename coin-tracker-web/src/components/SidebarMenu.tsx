@@ -39,7 +39,7 @@ const SidebarMenu: React.FC<Props> = ({
       </Box>
 
       {onSelect && (
-        <Stack direction="row" alignItems="center" onClick={() => onSelect(null)}
+        <Stack direction="row" alignItems="center" onClick={() => onSelect(null)} data-menu-item=""
           sx={{ py: 1, borderBottom: '1px solid #2a2c31', cursor: 'pointer', color: selected == null ? '#fff' : '#9aa1ad', fontSize: 12 }}>
           <span style={{ marginRight: 8 }}>⠿</span>
           <Box sx={{ flexGrow: 1 }}>{allLabel}</Box>
@@ -61,7 +61,7 @@ const SidebarMenu: React.FC<Props> = ({
               {items.map(it => {
                 const isChecked = checked?.includes(it.id);
                 return (
-                  <Stack key={it.id} direction="row" alignItems="center"
+                  <Stack key={it.id} direction="row" alignItems="center" data-menu-item={onToggle ? undefined : ''}
                     onClick={() => (onToggle ? onToggle(it.id) : onSelect?.(it.id))}
                     sx={{
                       pl: 1.5, py: 1, borderBottom: '1px solid #2a2c31', cursor: 'pointer', fontSize: 11.5,

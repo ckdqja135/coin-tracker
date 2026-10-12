@@ -103,7 +103,7 @@ const ExchangeCard: React.FC<{
   const recent = trades.filter(t => t.exchange === ex).slice(0, 3);
 
   return (
-    <Box sx={{ bgcolor: CARD, color: '#fff', borderRadius: 1.5, position: 'relative', mb: 3, border: '1px solid #2c2e33' }}>
+    <Box sx={{ bgcolor: CARD, color: '#fff', borderRadius: 1.5, position: 'relative', mb: 3, border: '1px solid #2c2e33', overflow: 'hidden' }}>
       <Select size="small" value={win.key} onChange={e => setWin(WINDOWS.find(w => w.key === e.target.value)!)} variant="standard" disableUnderline
         sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#111214', color: '#fff', fontSize: 11, px: 1, borderBottomLeftRadius: 6, '& .MuiSvgIcon-root': { color: '#fff', fontSize: 14 } }}>
         {WINDOWS.map(w => <MenuItem key={w.key} value={w.key} sx={{ fontSize: 12 }}>{w.key}</MenuItem>)}
@@ -195,7 +195,7 @@ const LongShort: React.FC = () => {
         ))}
       </Stack>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '300px 1fr' }, gap: 3, alignItems: 'start' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '300px minmax(0, 1fr)' }, gap: 3, alignItems: 'start' }}>
         <Box>
           {FEED_EXCHANGES.map(ex => (
             <ExchangeCard key={ex} ex={ex} coin={coin} trades={bigTrades} now={now} volume={volume} />
@@ -245,11 +245,11 @@ const LongShort: React.FC = () => {
             return (
               <Stack key={tr.id} direction="row" alignItems="center" sx={{ py: 0.6, fontSize: 12 }}>
                 <Box sx={{ width: 28, color, fontWeight: 700 }}>{tr.side === 'buy' ? '↗' : '↘'}</Box>
-                <Typography sx={{ width: 90, fontSize: 12, color: 'text.secondary' }}>{EX_META[tr.exchange].label}</Typography>
-                <Typography sx={{ flex: 1, fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>$ {tr.price.toFixed(2)}</Typography>
+                <Typography sx={{ width: { xs: 56, sm: 90 }, fontSize: 12, color: 'text.secondary' }} noWrap>{EX_META[tr.exchange].label}</Typography>
+                <Typography sx={{ flex: 1, fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'block' } }}>$ {tr.price.toFixed(2)}</Typography>
                 <Box sx={{ flex: 1 }}><SizeBadge usd={tr.usd} side={tr.side} /></Box>
-                <Box sx={{ flex: 1 }}><Drops usd={tr.usd} color={color} /></Box>
-                <Typography sx={{ width: 70, textAlign: 'right', fontSize: 12, color: 'text.secondary' }}>{age(now, tr.time)}</Typography>
+                <Box sx={{ flex: 1, minWidth: 30 }}><Drops usd={tr.usd} color={color} /></Box>
+                <Typography sx={{ width: { xs: 50, sm: 70 }, textAlign: 'right', fontSize: 12, color: 'text.secondary' }}>{age(now, tr.time)}</Typography>
               </Stack>
             );
           })}

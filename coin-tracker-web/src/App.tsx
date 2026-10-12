@@ -10,7 +10,6 @@ import Markets from './pages/Markets';
 import CompareVs from './pages/CompareVs';
 import LongShort from './pages/LongShort';
 import Correlation from './pages/Correlation';
-import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import { About, Blog, BlogPost, Policy } from './pages/Static';
 import { SelectedCoinsProvider } from './lib/selectedCoins';
@@ -71,8 +70,6 @@ function App() {
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/about" element={<About />} />
               <Route path="/policy" element={<Policy />} />
-              {/* 기존 소켓 기반 실시간 대시보드 (MariaDB 필요) */}
-              <Route path="/live" element={<Dashboard />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

@@ -49,6 +49,5 @@ cd coin-tracker-web && PORT=3001 npm start   # 웹 (3001, /api는 3000으로 프
 | `/markets` | 암호화폐·지수·원자재·환율 캔들 차트 |
 | `/longs-shorts` | 거래소별 롱/숏 비율, 실시간 대규모 체결·청산 |
 | `/correlation` | 자산 간 상관계수, 삼각 히트맵 |
-| `/live` | 기존 소켓 기반 실시간 대시보드 (MariaDB 필요) |
 
 API: `/api/market/{klines,metric,longshort,premium,snapshot}`
