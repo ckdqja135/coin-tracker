@@ -6,12 +6,9 @@ import HighchartsReact from 'highcharts-react-official';
 import ExchangeBadge from './ExchangeBadge';
 import { useI18n } from '../i18n';
 import { ExchangeMeta, klineOf } from '../lib/exchanges';
+import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
 import { ExchangeTickers, fetchKlinesSince } from '../services/market';
 
-// 알트코인 등락률의 기준 코인 (이 코인의 선은 0% 일직선)
-const REF = 'BTC';
-const UP = '#26a69a';
-const DOWN = '#ef5350';
 const COLORS = ['#3d6cf4', '#f7931a', '#26a69a', '#ab47bc', '#ef5350', '#00acc1', '#8d6e63', '#ec407a', '#7cb342', '#5c6bc0'];
 const DAY = 86_400_000;
 const MIN = 60_000;
@@ -160,7 +157,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         while (j + 1 < refPts.length && refPts[j + 1][0] <= t) j++;
         if (refPts[j][0] > t) return;
         const b = refPts[j][1];
-        out.push([t, ((1 + v / 100) / (1 + b / 100) - 1) * 100]);
+        out.push([t, relVsRef(v, b)]);
       });
       return out;
     };
@@ -249,7 +246,9 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         events: {
           // 등락률이 비슷하면 선 끝 라벨이 겹쳐 하나가 가려지므로, 위에서부터 차례로 겹치지 않게 아래로 민다
           render(this: Highcharts.Chart) {
+            // BTC 라벨은 오른쪽 끝이 아니라 현재 시각에 붙으므로, 오른쪽 끝 라벨끼리만 쌓는다
             const labels = this.series
+              .filter(sr => sr.options.id !== REF)
               .map(sr => sr.points[sr.points.length - 1] as any)
               .filter(pt => pt?.dataLabel?.visibility !== 'hidden' && pt?.dataLabel)
               .map(pt => pt.dataLabel)

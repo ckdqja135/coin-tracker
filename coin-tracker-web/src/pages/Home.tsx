@@ -13,14 +13,13 @@ import { storage } from '../lib/chartUtils';
 import { useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { useTickers } from '../lib/useTickers';
+import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
 import { ExchangeTickers, TickerExchange, fetchCoinInfo, fetchOverview } from '../services/market';
 
 type Currency = 'USD' | 'KRW';
 type Mode = 'listing' | 'premium';
 
 const ALL_EXCHANGES = EXCHANGES.map(e => e.id);
-const UP = '#26a69a';
-const DOWN = '#ef5350';
 
 /** 거래소 통화 -> 표시 통화 변환 */
 const convert = (price: number, from: Currency, to: Currency, fx: number | null) => {
@@ -118,13 +117,13 @@ const CompareTable: React.FC<{
   // 기준 거래소를 맨 앞에
   const columns = [base, ...EXCHANGES.filter(e => e.id !== base.id)];
 
-  // 같은 거래소의 BTC 대비 일간 등락: +면 초록, -면 빨강. BTC는 기준이라 색을 바꾸지 않는다
+  // 같은 거래소의 BTC 대비 등락(거래소 시세의 24시간 등락률 기준, 업비트만 09:00 KST 기준): +면 초록, -면 빨강. BTC는 기준이라 색을 바꾸지 않는다
   const vsBtcColor = (ex: ExchangeMeta, coin: string): string | undefined => {
-    if (coin === 'BTC') return undefined;
+    if (coin === REF) return undefined;
     const c = tickers[ex.id]?.data[coin]?.change24h;
-    const b = tickers[ex.id]?.data.BTC?.change24h;
+    const b = tickers[ex.id]?.data[REF]?.change24h;
     if (c == null || b == null) return undefined;
-    const rel = ((1 + c / 100) / (1 + b / 100) - 1) * 100;
+    const rel = relVsRef(c, b);
     return rel > 0 ? UP : rel < 0 ? DOWN : undefined;
   };
 
@@ -214,7 +213,7 @@ const Home: React.FC = () => {
   useEffect(() => storage.set('cimCurrency', currency), [currency]);
 
   // CIM은 알트코인을 BTC 대비로 그리므로, BTC를 선택하지 않아도 BTC 시세는 함께 받는다
-  const tickerCoins = useMemo(() => Array.from(new Set(['BTC', ...coins])), [coins]);
+  const tickerCoins = useMemo(() => Array.from(new Set([REF, ...coins])), [coins]);
   const tickers = useTickers(ALL_EXCHANGES, tickerCoins, 3000);
   const info = useAsync(() => (coins.length ? fetchCoinInfo(coins) : Promise.resolve([])), [coins.join(',')], 300_000);
   const images = useMemo(() => Object.fromEntries((info.data ?? []).map(c => [c.symbol, c.image])), [info.data]);
