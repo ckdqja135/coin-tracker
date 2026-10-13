@@ -7,6 +7,10 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'home.cimVsBtc': 'Altcoins vs BTC',
+    'chat.title': 'Chat', 'chat.online': '{n} online', 'chat.close': 'Close chat', 'chat.empty': 'No messages yet. Say hi!', 'chat.connecting': 'Connecting…',
+    'chat.nick': 'Nickname', 'chat.placeholder': 'Message (max 200 chars)', 'chat.send': 'Send',
+    'chat.rules': 'Anonymous public chat. Links are blocked and messages are not stored permanently. Be respectful.',
+    'chat.err.rate': 'You are sending too fast. Wait a moment.', 'chat.err.link': 'Links are not allowed.', 'chat.err.empty': 'Enter a nickname and a message.',
     'arb.title': 'Arbitrage calculator', 'arb.coin': 'Coin', 'arb.buyOn': 'Buy on', 'arb.sellOn': 'Sell on', 'arb.amount': 'Amount (KRW)',
     'arb.buyFee': 'Buy fee (%)', 'arb.sellFee': 'Sell fee (%)', 'arb.withdrawFee': 'Withdrawal fee ({coin})',
     'arb.gap': 'Price gap', 'arb.received': 'You get', 'arb.profit': 'Profit', 'arb.noPrice': 'No price for this coin on one of the exchanges.',
@@ -84,6 +88,10 @@ const dict = {
   ko: {
     'home.cimRef': '기준',
     'home.cimVsBtc': '알트코인은 BTC 대비',
+    'chat.title': '채팅', 'chat.online': '{n}명 접속', 'chat.close': '채팅 닫기', 'chat.empty': '아직 메시지가 없습니다. 먼저 인사해 보세요!', 'chat.connecting': '연결 중…',
+    'chat.nick': '닉네임', 'chat.placeholder': '메시지 (최대 200자)', 'chat.send': '전송',
+    'chat.rules': '익명 공개 채팅입니다. 링크는 보낼 수 없고, 메시지는 영구 저장되지 않습니다. 서로 존중해 주세요.',
+    'chat.err.rate': '너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.', 'chat.err.link': '링크는 보낼 수 없습니다.', 'chat.err.empty': '닉네임과 메시지를 입력해 주세요.',
     'arb.title': '차익 계산기', 'arb.coin': '코인', 'arb.buyOn': '살 곳', 'arb.sellOn': '팔 곳', 'arb.amount': '금액 (원)',
     'arb.buyFee': '매수 수수료 (%)', 'arb.sellFee': '매도 수수료 (%)', 'arb.withdrawFee': '출금 수수료 ({coin})',
     'arb.gap': '가격 차이', 'arb.received': '받는 금액', 'arb.profit': '수익', 'arb.noPrice': '두 거래소 중 한 곳에 이 코인 시세가 없습니다.',

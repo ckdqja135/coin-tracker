@@ -7,6 +7,7 @@ import {
 import { useI18n, TKey } from '../i18n';
 import { storage } from '../lib/chartUtils';
 import { useThemeMode } from '../lib/themeMode';
+import ChatWidget from './ChatWidget';
 import TickerBar from './TickerBar';
 
 // 헤더 메뉴 (로고가 홈 링크 역할)
@@ -165,6 +166,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         : <Container maxWidth="lg" component="main" sx={{ flexGrow: 1, py: 3 }}>{children}</Container>}
       <Footer full={full} />
       <CookieBanner />
+      <ChatWidget />
     </Box>
   );
 };

@@ -7,6 +7,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { AppDataSource } from './config/data-source';
 import apiRoutes from './route/index';
 import { coinSocket } from './socket/coinSocket';
+import { chatSocket } from './socket/chatSocket';
 import logger from './log/logger';
 import { fetchAllCoinSymbols, startDataCollection } from './service/coinService';
 import { registerAggregateTimers } from './service/aggregateService';
@@ -34,6 +35,8 @@ if (fs.existsSync(path.join(WEB_BUILD, 'index.html'))) {
 
 // 소켓 연결 설정
 coinSocket(io);
+// 실시간 채팅 (/chat)
+chatSocket(io);
 
 // 서버 시작 및 주기적 데이터 갱신
 const PORT = process.env.PORT || 3000;
