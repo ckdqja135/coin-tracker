@@ -27,6 +27,7 @@ service/marketService.ts  Exchange/data-provider API calls, caching, data normal
 service/tradeAggregator.ts  Real-time trade aggregation for the Longs/Shorts page (in memory)
 service/liquidationAggregator.ts  Real-time liquidation aggregation for the Longs/Shorts page (in memory)
 socket/chatSocket.ts      Anonymous live chat (socket.io /chat namespace, last 50 messages in memory)
+socket/profanity.ts       Chat profanity filter (masks Korean/English profanity, including spaced or digit-padded variants)
 service/dominanceRecorder.ts  Records BTC dominance every 10 minutes (data/btc-dominance.json)
 coin-tracker-web/         React (CRA) + MUI + Highcharts frontend
 python-analysis-server/   Separate analysis server (FastAPI)

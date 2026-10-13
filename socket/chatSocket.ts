@@ -1,10 +1,12 @@
 import { Namespace, Server as SocketIOServer, Socket } from 'socket.io';
 import logger from '../log/logger';
+import { hasProfanity, maskProfanity } from './profanity';
 
 /**
  * 실시간 채팅 (/chat 네임스페이스)
  * - 로그인 없이 닉네임만으로 참여한다. 최근 메시지는 메모리에만 보관한다 (서버 재시작 시 사라짐).
  * - 스팸 방지: 메시지 길이 제한, 연결별·IP별 전송 간격/횟수 제한, 링크 금지.
+ * - 욕설: 메시지의 욕설은 *로 가리고, 욕설이 든 닉네임은 거부한다.
  */
 
 export interface ChatMessage { id: string; nick: string; text: string; time: number }
@@ -70,11 +72,12 @@ export const chatSocket = (io: SocketIOServer): void => {
             const text = clean(payload?.text, MAX_TEXT);
             if (!nick || !text) return reply({ ok: false, error: 'empty' });
             if (LINK_RE.test(text) || LINK_RE.test(nick)) return reply({ ok: false, error: 'link' });
+            if (hasProfanity(nick)) return reply({ ok: false, error: 'nick' });
             const now = Date.now();
             if (now - lastSent < MIN_GAP_MS || !allowIp(ip, now)) return reply({ ok: false, error: 'rate' });
             lastSent = now;
 
-            const msg: ChatMessage = { id: `${now}-${++seq}`, nick, text, time: now };
+            const msg: ChatMessage = { id: `${now}-${++seq}`, nick, text: maskProfanity(text).text, time: now };
             history.push(msg);
             if (history.length > HISTORY) history.shift();
             nsp.emit('message', msg);
