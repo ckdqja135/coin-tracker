@@ -1,19 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, IconButton, InputBase, Paper, Stack, Typography } from '@mui/material';
 import { TKey, useI18n } from '../i18n';
 import { storage } from '../lib/chartUtils';
-
-interface ChatMessage { id: string; nick: string; text: string; time: number }
+import { ChatMessage, fetchChat, postChat } from '../services/chat';
 
 const MAX_TEXT = 200;
 const MAX_KEEP = 100;
+// 창이 열려 있을 때 / 닫혀 있을 때(새 메시지 수만 셈) 새 메시지를 받아 오는 간격
+const POLL_OPEN_MS = 2_500;
+const POLL_CLOSED_MS = 15_000;
 const randomNick = () => `anon${Math.floor(1000 + Math.random() * 9000)}`;
+const randomId = () => Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
 
 /**
- * 화면 오른쪽 아래 실시간 채팅 (서버 /chat 네임스페이스)
- * 화면과 같은 주소로 붙으므로 HTTPS로 배포하면 소켓도 자동으로 wss로 연결된다.
- * 창을 처음 열 때 연결하고, 닫아도 연결은 유지해 새 메시지 수를 보여준다.
+ * 화면 오른쪽 아래 실시간 채팅 (서버 /api/chat, HTTP 폴링)
+ * 프론트(HTTPS)와 백엔드(HTTP)가 따로 배포되어 웹소켓 대신 다른 API처럼 일반 요청으로 주고받는다.
+ * 창을 처음 열 때부터 받아 오고, 닫아도 느린 간격으로 받아 새 메시지 수를 보여준다.
  */
 const ChatWidget: React.FC = () => {
   const { t } = useI18n();
@@ -26,27 +28,49 @@ const ChatWidget: React.FC = () => {
   const [nick, setNick] = useState(() => storage.get('chatNick', randomNick()));
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  // 이 브라우저의 임시 ID (서버가 전송 횟수 제한·접속자 수에 쓴다)
+  const [cid] = useState(() => {
+    const saved = storage.get<string>('chatCid', '');
+    if (/^[a-z0-9]{16,40}$/.test(saved)) return saved;
+    const id = randomId();
+    storage.set('chatCid', id);
+    return id;
+  });
+  const lastId = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
 
   useEffect(() => storage.set('chatNick', nick), [nick]);
 
+  // 새 메시지 받아 오기 (처음에는 최근 기록 전체, 이후에는 마지막 번호 이후만)
+  const poll = useCallback(async () => {
+    try {
+      const after = lastId.current;
+      const res = await fetchChat(cid, after);
+      // 서버가 재시작해 번호가 처음부터 다시 시작했으면 전체를 다시 받는다
+      const reset = after != null && res.last < after;
+      const snap = reset ? await fetchChat(cid, null) : res;
+      setConnected(true);
+      setOnline(snap.online);
+      if (after == null || reset) {
+        setMessages(snap.messages);
+      } else if (snap.messages.length) {
+        setMessages(list => [...list, ...snap.messages.filter(m => !list.some(x => x.id === m.id))].slice(-MAX_KEEP));
+        if (!openRef.current) setUnread(n => n + snap.messages.length);
+      }
+      lastId.current = snap.last;
+    } catch {
+      setConnected(false);
+    }
+  }, [cid]);
+
   useEffect(() => {
     if (!started) return;
-    const s = io('/chat');
-    socketRef.current = s;
-    s.on('connect', () => setConnected(true));
-    s.on('disconnect', () => setConnected(false));
-    s.on('history', (h: ChatMessage[]) => setMessages(h));
-    s.on('online', (n: number) => setOnline(n));
-    s.on('message', (m: ChatMessage) => {
-      setMessages(list => [...list, m].slice(-MAX_KEEP));
-      if (!openRef.current) setUnread(n => n + 1);
-    });
-    return () => { s.disconnect(); socketRef.current = null; };
-  }, [started]);
+    poll();
+    const id = setInterval(poll, open ? POLL_OPEN_MS : POLL_CLOSED_MS);
+    return () => clearInterval(id);
+  }, [started, open, poll]);
 
   // 새 메시지가 오면 맨 아래로
   useEffect(() => {
@@ -60,12 +84,14 @@ const ChatWidget: React.FC = () => {
     setUnread(0);
   };
 
-  const send = () => {
+  const send = async () => {
     const body = text.trim();
-    if (!body || !socketRef.current) return;
-    socketRef.current.emit('message', { nick: nick.trim() || randomNick(), text: body }, (res: { ok: boolean; error?: string }) => {
-      if (res?.ok) { setText(''); setError(null); } else setError(`chat.err.${res?.error ?? 'empty'}`);
-    });
+    if (!body) return;
+    const err = await postChat(cid, nick.trim() || randomNick(), body);
+    if (err) { setError(`chat.err.${err}`); return; }
+    setText('');
+    setError(null);
+    poll();
   };
 
   const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
