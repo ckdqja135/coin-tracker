@@ -7,7 +7,10 @@ import {
 import { useI18n, TKey } from '../i18n';
 import { storage } from '../lib/chartUtils';
 import { useThemeMode } from '../lib/themeMode';
+import { FloatingProvider } from '../lib/floating';
+import { SharedTickersProvider } from '../lib/sharedTickers';
 import ChatWidget from './ChatWidget';
+import TradingTools from './TradingTools';
 import TickerBar from './TickerBar';
 
 // 헤더 메뉴 (로고가 홈 링크 역할)
@@ -152,6 +155,14 @@ const CookieBanner: React.FC = () => {
   );
 };
 
+/** 화면 오른쪽 아래 플로팅 버튼 줄: [Tools] [Chat] (모든 페이지) */
+const FloatingBar: React.FC = () => (
+  <Box sx={{ position: 'fixed', right: { xs: 8, sm: 28 }, bottom: { xs: 16, sm: 28 }, zIndex: 1250, display: 'flex', gap: 1.25 }}>
+    <TradingTools />
+    <ChatWidget />
+  </Box>
+);
+
 // 왼쪽 사이드바가 화면 끝까지 붙는 페이지
 const FULL_WIDTH = ['/btc', '/eth', '/markets', '/compare'];
 
@@ -159,6 +170,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const full = FULL_WIDTH.includes(pathname);
   return (
+    <FloatingProvider>
+    <SharedTickersProvider>
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header />
       {full
@@ -166,8 +179,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         : <Container maxWidth="lg" component="main" sx={{ flexGrow: 1, py: 3 }}>{children}</Container>}
       <Footer full={full} />
       <CookieBanner />
-      <ChatWidget />
+      <FloatingBar />
     </Box>
+    </SharedTickersProvider>
+    </FloatingProvider>
   );
 };
 

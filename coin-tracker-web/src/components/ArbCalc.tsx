@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Box, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, ButtonBase, InputBase, Stack, Typography } from '@mui/material';
 import { useI18n } from '../i18n';
 import { EXCHANGES, exchangeMeta } from '../lib/exchanges';
 import { DOWN, UP } from '../lib/vsRef';
+import { Field, Select, inputBorder } from './toolsUi';
 import { ExchangeTickers, TickerExchange } from '../services/market';
 
 // 거래 수수료 기본값(%): 일반 등급 기준. 등급·이벤트에 따라 다르므로 직접 고칠 수 있다
@@ -35,8 +36,11 @@ export const calcArb = (p: {
   };
 };
 
-const num = (v: string) => (v.trim() === '' ? NaN : Number(v));
+// 쉼표를 넣어 입력해도 숫자로 읽는다
+const num = (v: string) => (v.trim() === '' ? NaN : Number(v.replace(/,/g, '')));
+const PRESETS = [1e6, 5e6, 1e7, 5e7];
 
+/** 차익 계산기 (Tools 패널의 Arbitrage 탭) */
 const ArbCalc: React.FC<{ coins: string[]; tickers: Partial<Record<TickerExchange, ExchangeTickers>> }> = ({ coins, tickers }) => {
   const { t } = useI18n();
   const [coin, setCoin] = useState(coins[0] ?? 'BTC');
@@ -46,6 +50,7 @@ const ArbCalc: React.FC<{ coins: string[]; tickers: Partial<Record<TickerExchang
   const [buyFee, setBuyFee] = useState(String(DEFAULT_FEE.binance));
   const [sellFee, setSellFee] = useState(String(DEFAULT_FEE.upbit));
   const [withdrawFee, setWithdrawFee] = useState('0');
+  const [showFees, setShowFees] = useState(false);
 
   const c = coins.includes(coin) ? coin : coins[0];
   const fx = Object.values(tickers).find(x => x?.usdKrw)?.usdKrw ?? null;
@@ -57,48 +62,89 @@ const ArbCalc: React.FC<{ coins: string[]; tickers: Partial<Record<TickerExchang
     buyFee: num(buyFee) || 0, sellFee: num(sellFee) || 0, withdrawFee: num(withdrawFee) || 0,
   }) : null;
 
-  const field = { size: 'small' as const, sx: { minWidth: 120, flex: 1 }, InputLabelProps: { shrink: true } };
-  const exSelect = (label: string, value: TickerExchange, onChange: (v: TickerExchange) => void) => (
-    <TextField select label={label} value={value} onChange={e => onChange(e.target.value as TickerExchange)} {...field}>
-      {EXCHANGES.map(e => <MenuItem key={e.id} value={e.id}>{e.label}</MenuItem>)}
-    </TextField>
-  );
+  const exOptions = EXCHANGES.map(e => ({ value: e.id, label: e.label }));
+  const pickBuy = (v: TickerExchange) => { setBuyEx(v); setBuyFee(String(DEFAULT_FEE[v])); };
+  const pickSell = (v: TickerExchange) => { setSellEx(v); setSellFee(String(DEFAULT_FEE[v])); };
+  // 살 곳 ⇄ 팔 곳 (수수료도 함께 바꾼다)
+  const swap = () => {
+    setBuyEx(sellEx); setSellEx(buyEx);
+    setBuyFee(sellFee); setSellFee(buyFee);
+  };
   const krw = (v: number) => `₩ ${Math.round(v).toLocaleString('en-US')}`;
+  const signed = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}%`;
+  const color = (v: number) => (v > 0 ? UP : v < 0 ? DOWN : undefined);
+  const feeInput = (label: string, value: string, set: (v: string) => void) => (
+    <Field label={label} small>
+      <InputBase value={value} onChange={e => set(e.target.value)} inputProps={{ inputMode: 'decimal' }}
+        sx={{ ...inputBorder, borderRadius: '8px', height: 36, px: 1.2, fontSize: 14 }} />
+    </Field>
+  );
 
   return (
-    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2 }}>
-      <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-        <Typography sx={{ fontSize: 16, fontWeight: 800 }}>{t('arb.title')}</Typography>
-        <Tooltip title={t('arb.help')}><Box component="span" sx={{ color: 'text.secondary', cursor: 'help' }}>ⓘ</Box></Tooltip>
+    <Stack spacing={1.75} sx={{ p: 2.25 }}>
+      {/* 코인 · 살 곳 ⇄ 팔 곳 */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: '80px minmax(0,1fr) 36px minmax(0,1fr)', gap: 1, alignItems: 'end' }}>
+        <Field label={t('arb.coin')}><Select value={c ?? ''} onChange={setCoin} options={coins.map(x => ({ value: x, label: x }))} /></Field>
+        <Field label={t('arb.buyOn')}><Select value={buyEx} onChange={v => pickBuy(v as TickerExchange)} options={exOptions} /></Field>
+        <ButtonBase onClick={swap} title={t('arb.swap')} aria-label={t('arb.swap')}
+          sx={{ ...inputBorder, height: 40, bgcolor: 'ui.pill.bg', fontSize: 15, color: 'text.secondary', '&:hover': { bgcolor: 'ui.highlight.bg', color: 'primary.main' } }}>⇄</ButtonBase>
+        <Field label={t('arb.sellOn')}><Select value={sellEx} onChange={v => pickSell(v as TickerExchange)} options={exOptions} /></Field>
+      </Box>
+
+      {/* 금액 */}
+      <Stack direction="row" alignItems="center" gap={1} sx={{ ...inputBorder, height: 48, px: 1.5 }}>
+        <InputBase value={amount} onChange={e => setAmount(e.target.value)} inputProps={{ inputMode: 'numeric', 'aria-label': t('arb.amount') }}
+          sx={{ flex: 1, fontSize: 18, fontWeight: 600, minWidth: 0 }} />
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>KRW</Typography>
       </Stack>
-      <Stack direction="row" flexWrap="wrap" gap={1.5}>
-        <TextField select label={t('arb.coin')} value={c ?? ''} onChange={e => setCoin(e.target.value)} {...field}>
-          {coins.map(x => <MenuItem key={x} value={x}>{x}</MenuItem>)}
-        </TextField>
-        {exSelect(t('arb.buyOn'), buyEx, v => { setBuyEx(v); setBuyFee(String(DEFAULT_FEE[v])); })}
-        {exSelect(t('arb.sellOn'), sellEx, v => { setSellEx(v); setSellFee(String(DEFAULT_FEE[v])); })}
-        <TextField label={t('arb.amount')} value={amount} onChange={e => setAmount(e.target.value)} type="number" {...field} />
-      </Stack>
-      <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ mt: 1.5 }}>
-        <TextField label={t('arb.buyFee')} value={buyFee} onChange={e => setBuyFee(e.target.value)} type="number" {...field} />
-        <TextField label={t('arb.sellFee')} value={sellFee} onChange={e => setSellFee(e.target.value)} type="number" {...field} />
-        <TextField label={t('arb.withdrawFee', { coin: c ?? '' })} value={withdrawFee} onChange={e => setWithdrawFee(e.target.value)} type="number" {...field} />
+      <Stack direction="row" gap={0.75} flexWrap="wrap">
+        {PRESETS.map(v => (
+          <ButtonBase key={v} onClick={() => setAmount(String(v))}
+            sx={{ border: 1, borderColor: 'ui.card.border', borderRadius: 99, px: 1.25, py: '5px', fontSize: 12, color: 'text.secondary', fontFamily: 'inherit', '&:hover': { borderColor: 'primary.main', color: 'primary.main' } }}>
+            ₩{v / 1e6}M
+          </ButtonBase>
+        ))}
       </Stack>
 
-      <Box sx={{ mt: 2, p: 1.5, borderRadius: 1, bgcolor: 'ui.pill.bg' }}>
-        {!r && <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('arb.noPrice')}</Typography>}
-        {r && (
-          <Stack direction="row" flexWrap="wrap" columnGap={3} rowGap={1} alignItems="baseline">
-            <Typography sx={{ fontSize: 13 }}>{t('arb.gap')} <b style={{ color: r.gap > 0 ? UP : r.gap < 0 ? DOWN : undefined }}>{r.gap > 0 ? '+' : ''}{r.gap.toFixed(2)}%</b></Typography>
-            <Typography sx={{ fontSize: 13 }}>{t('arb.received')} <b>{krw(r.received)}</b></Typography>
-            <Typography sx={{ fontSize: 15, fontWeight: 800, color: r.profit > 0 ? UP : r.profit < 0 ? DOWN : undefined }}>
-              {t('arb.profit')} {r.profit > 0 ? '+' : ''}{krw(r.profit)} ({r.pct > 0 ? '+' : ''}{r.pct.toFixed(2)}%)
-            </Typography>
-          </Stack>
+      {/* 수수료 (접힘) */}
+      <ButtonBase onClick={() => setShowFees(s => !s)} aria-expanded={showFees}
+        sx={{ justifyContent: 'space-between', fontSize: 13, color: 'text.primary', fontFamily: 'inherit', gap: 1 }}>
+        <Box component="span" sx={{ fontWeight: 600, flexShrink: 0 }}>{t('arb.fees')}</Box>
+        <Box component="span" sx={{ color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'right' }}>
+          {t('arb.feeSummary', { buy: buyFee || '0', sell: sellFee || '0', wd: withdrawFee || '0', coin: c ?? '' })}
+        </Box>
+        <Box component="span" sx={{ color: 'text.secondary', flexShrink: 0 }}>{showFees ? '▴' : '▾'}</Box>
+      </ButtonBase>
+      {showFees && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 1 }}>
+          {feeInput(t('arb.buyFee'), buyFee, setBuyFee)}
+          {feeInput(t('arb.sellFee'), sellFee, setSellFee)}
+          {feeInput(t('arb.withdrawShort', { coin: c ?? '' }), withdrawFee, setWithdrawFee)}
+        </Box>
+      )}
+
+      {/* 결과 */}
+      <Stack spacing={1.25} sx={{ bgcolor: 'ui.pill.bg', borderRadius: '12px', p: 2 }}>
+        {!r ? (
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('arb.noPrice')}</Typography>
+        ) : (
+          <>
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('arb.estimated')}</Typography>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('arb.gapShort')} <b style={{ color: color(r.gap) }}>{signed(r.gap)}</b></Typography>
+            </Stack>
+            <Stack direction="row" alignItems="baseline" gap={1}>
+              <Typography sx={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: color(r.profit) }}>
+                {r.profit > 0 ? '+' : r.profit < 0 ? '−' : ''}{krw(Math.abs(r.profit))}
+              </Typography>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: color(r.profit) }}>{signed(r.pct)}</Typography>
+            </Stack>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('arb.youReceive')} <Box component="b" sx={{ color: 'text.primary' }}>{krw(r.received)}</Box></Typography>
+          </>
         )}
-      </Box>
-      <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 1 }}>{t('arb.note')}</Typography>
-    </Box>
+      </Stack>
+      <Typography sx={{ fontSize: 11, lineHeight: 1.5, color: 'text.secondary' }}>{t('arb.note')}</Typography>
+    </Stack>
   );
 };
 

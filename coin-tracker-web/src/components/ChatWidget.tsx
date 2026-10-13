@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, IconButton, InputBase, Paper, Stack, Typography } from '@mui/material';
 import { TKey, useI18n } from '../i18n';
 import { storage } from '../lib/chartUtils';
+import { fabSx, panelSx, useFloating } from '../lib/floating';
 import { ChatMessage, fetchChat, postChat } from '../services/chat';
 
 const MAX_TEXT = 200;
@@ -19,7 +20,8 @@ const randomId = () => Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvw
  */
 const ChatWidget: React.FC = () => {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const { panel, setPanel, toggle: togglePanel } = useFloating();
+  const open = panel === 'chat';
   const [started, setStarted] = useState(false);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -79,7 +81,7 @@ const ChatWidget: React.FC = () => {
   }, [messages, open]);
 
   const toggle = () => {
-    setOpen(o => !o);
+    togglePanel('chat');
     setStarted(true);
     setUnread(0);
   };
@@ -99,16 +101,13 @@ const ChatWidget: React.FC = () => {
   return (
     <>
       {open && (
-        <Paper elevation={8} sx={{
-          position: 'fixed', right: { xs: 8, sm: 16 }, bottom: 72, zIndex: 1250, width: { xs: 'calc(100vw - 16px)', sm: 340 }, height: 440,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 2,
-        }}>
+        <Paper elevation={0} sx={{ ...panelSx, height: 440 }}>
           <Stack direction="row" alignItems="center" gap={1} sx={{ px: 1.5, py: 1, borderBottom: 1, borderColor: 'divider' }}>
             <Typography sx={{ fontWeight: 800, fontSize: 14 }}>{t('chat.title')}</Typography>
             <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: connected ? '#26a69a' : 'text.disabled' }} />
             {online != null && <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{t('chat.online', { n: String(online) })}</Typography>}
             <Box sx={{ flexGrow: 1 }} />
-            <IconButton size="small" onClick={() => setOpen(false)} aria-label={t('chat.close')}>✕</IconButton>
+            <IconButton size="small" onClick={() => setPanel(null)} aria-label={t('chat.close')}>✕</IconButton>
           </Stack>
 
           <Box ref={listRef} sx={{ flex: 1, overflowY: 'auto', px: 1.5, py: 1 }}>
@@ -142,11 +141,10 @@ const ChatWidget: React.FC = () => {
         </Paper>
       )}
 
-      <Button onClick={toggle} variant="contained"
-        sx={{ position: 'fixed', right: { xs: 8, sm: 16 }, bottom: 16, zIndex: 1250, borderRadius: 99, px: 2, fontWeight: 800, boxShadow: 4 }}>
-        💬 {t('chat.title')}
+      <Button onClick={toggle} variant="contained" sx={{ ...fabSx, boxShadow: '0 6px 18px rgba(47,126,247,.35)' }}>
+        {t('chat.title')}
         {unread > 0 && (
-          <Box component="span" sx={{ ml: 1, bgcolor: '#ef5350', color: '#fff', borderRadius: 99, px: 0.8, fontSize: 11, lineHeight: '18px' }}>{unread > 99 ? '99+' : unread}</Box>
+          <Box component="span" sx={{ bgcolor: '#ef5350', color: '#fff', borderRadius: 99, px: 0.8, fontSize: 11, lineHeight: '18px' }}>{unread > 99 ? '99+' : unread}</Box>
         )}
       </Button>
     </>

@@ -11,15 +11,17 @@ const dict = {
     'chat.nick': 'Nickname', 'chat.placeholder': 'Message (max 200 chars)', 'chat.send': 'Send',
     'chat.rules': 'Anonymous public chat. Links are blocked and messages are not stored permanently. Be respectful.',
     'chat.err.rate': 'You are sending too fast. Wait a moment.', 'chat.err.link': 'Links are not allowed.', 'chat.err.empty': 'Enter a nickname and a message.', 'chat.err.busy': 'The chat is busy right now. Try again in a few seconds.', 'chat.err.network': 'Could not reach the chat server.', 'chat.err.cid': 'Please reload the page and try again.',
-    'arb.title': 'Arbitrage calculator', 'arb.coin': 'Coin', 'arb.buyOn': 'Buy on', 'arb.sellOn': 'Sell on', 'arb.amount': 'Amount (KRW)',
-    'arb.buyFee': 'Buy fee (%)', 'arb.sellFee': 'Sell fee (%)', 'arb.withdrawFee': 'Withdrawal fee ({coin})',
-    'arb.gap': 'Price gap', 'arb.received': 'You get', 'arb.profit': 'Profit', 'arb.noPrice': 'No price for this coin on one of the exchanges.',
-    'arb.help': 'Buys with the amount on one exchange, moves the coin, and sells it on the other at current prices. USD exchanges are converted at the USD/KRW rate.',
+    'tools.title': 'Tools', 'tools.arbitrage': 'Arbitrage', 'tools.alerts': 'Premium alerts', 'tools.close': 'Close tools',
+    'arb.swap': 'Swap exchanges', 'arb.fees': 'Fees', 'arb.feeSummary': 'Buy {buy}% · Sell {sell}% · Withdraw {wd} {coin}', 'arb.withdrawShort': 'Withdrawal ({coin})',
+    'arb.estimated': 'Estimated profit', 'arb.gapShort': 'gap', 'arb.youReceive': 'You receive',
+    'alert.now': 'Now on {ex}', 'alert.vsBinance': 'vs Binance', 'alert.nowShort': 'now', 'alert.empty': 'No alerts yet.', 'alert.triggered': 'Triggered', 'alert.waiting': 'Waiting',
+    'arb.coin': 'Coin', 'arb.buyOn': 'Buy on', 'arb.sellOn': 'Sell on', 'arb.amount': 'Amount (KRW)',
+    'arb.buyFee': 'Buy fee (%)', 'arb.sellFee': 'Sell fee (%)', 
+    'arb.noPrice': 'No price for this coin on one of the exchanges.',
     'arb.note': 'Default fees are typical standard-tier rates and may differ for you. Currency conversion costs and price moves during the transfer are not included. Not investment advice.',
-    'alert.heading': 'Kimchi premium alerts', 'alert.title': 'Kimchi premium alert', 'alert.body': '{coin} on {ex}: premium {v}',
-    'alert.exchange': 'Exchange', 'alert.when': 'When premium is', 'alert.above': 'at or above', 'alert.below': 'at or below', 'alert.value': 'Premium (%)',
-    'alert.add': 'Add', 'alert.remove': 'Remove alert', 'alert.firedAt': 'fired {time}', 'alert.notTracked': 'add coin above',
-    'alert.help': 'Premium against Binance (USD × USD/KRW). Sends a browser notification when the premium crosses your level. Works only while this page is open.',
+    'alert.title': 'Kimchi premium alert', 'alert.body': '{coin} on {ex}: premium {v}',
+    'alert.exchange': 'Exchange', 'alert.value': 'Premium (%)',
+    'alert.add': 'Add', 'alert.remove': 'Remove alert', 'alert.notTracked': 'add coin above',
     'alert.denied': 'Browser notifications are blocked. Allow them in your browser settings to get alerts.',
     'alert.unsupported': 'This browser does not support notifications. Alerts are shown on this page only.',
     'nav.notices': 'Notices', 'notices.title': 'Exchange Notices',
@@ -68,15 +70,10 @@ const dict = {
     'common.delete': 'Delete', 
     
     
-    
-    
-    
     'markets.title': 'Markets', 
-    
     'compare.title': 'Compare VS', 
     'compare.saveAs': 'Save current chart', 
     'ls.title': 'Longs / Shorts', 
-    
     
     'ls.waiting': 'Waiting for trades…', 'ls.disconnected': 'Reconnecting…',
     'corr.coef': 'Correlation coefficient', 'corr.vs': '{asset} VS', 'corr.heatmap': 'Triangle correlation heatmap',
@@ -92,15 +89,17 @@ const dict = {
     'chat.nick': '닉네임', 'chat.placeholder': '메시지 (최대 200자)', 'chat.send': '전송',
     'chat.rules': '익명 공개 채팅입니다. 링크는 보낼 수 없고, 메시지는 영구 저장되지 않습니다. 서로 존중해 주세요.',
     'chat.err.rate': '너무 빠르게 보내고 있습니다. 잠시 후 다시 보내 주세요.', 'chat.err.link': '링크는 보낼 수 없습니다.', 'chat.err.empty': '닉네임과 메시지를 입력해 주세요.', 'chat.err.busy': '지금 채팅이 붐빕니다. 몇 초 뒤 다시 보내 주세요.', 'chat.err.network': '채팅 서버에 연결하지 못했습니다.', 'chat.err.cid': '페이지를 새로고침한 뒤 다시 시도해 주세요.',
-    'arb.title': '차익 계산기', 'arb.coin': '코인', 'arb.buyOn': '살 곳', 'arb.sellOn': '팔 곳', 'arb.amount': '금액 (원)',
-    'arb.buyFee': '매수 수수료 (%)', 'arb.sellFee': '매도 수수료 (%)', 'arb.withdrawFee': '출금 수수료 ({coin})',
-    'arb.gap': '가격 차이', 'arb.received': '받는 금액', 'arb.profit': '수익', 'arb.noPrice': '두 거래소 중 한 곳에 이 코인 시세가 없습니다.',
-    'arb.help': '한 거래소에서 입력한 금액만큼 사서 코인을 옮긴 뒤 다른 거래소에서 현재가로 팔았을 때의 결과입니다. 달러 거래소는 원/달러 환율로 환산합니다.',
+    'tools.title': '도구', 'tools.arbitrage': '차익 계산', 'tools.alerts': '김프 알림', 'tools.close': '도구 닫기',
+    'arb.swap': '살 곳·팔 곳 바꾸기', 'arb.fees': '수수료', 'arb.feeSummary': '매수 {buy}% · 매도 {sell}% · 출금 {wd} {coin}', 'arb.withdrawShort': '출금 ({coin})',
+    'arb.estimated': '예상 수익', 'arb.gapShort': '가격 차이', 'arb.youReceive': '받는 금액',
+    'alert.now': '현재 {ex}', 'alert.vsBinance': '(바이낸스 대비)', 'alert.nowShort': '현재', 'alert.empty': '아직 알림이 없습니다.', 'alert.triggered': '조건 충족', 'alert.waiting': '대기 중',
+    'arb.coin': '코인', 'arb.buyOn': '살 곳', 'arb.sellOn': '팔 곳', 'arb.amount': '금액 (원)',
+    'arb.buyFee': '매수 수수료 (%)', 'arb.sellFee': '매도 수수료 (%)', 
+    'arb.noPrice': '두 거래소 중 한 곳에 이 코인 시세가 없습니다.',
     'arb.note': '기본 수수료는 일반 등급 기준이며 실제와 다를 수 있습니다. 환전 비용과 송금 중 가격 변동은 반영하지 않습니다. 투자 조언이 아닙니다.',
-    'alert.heading': '김프 알림', 'alert.title': '김프 알림', 'alert.body': '{ex} {coin} 김프 {v}',
-    'alert.exchange': '거래소', 'alert.when': '김프가', 'alert.above': '이상', 'alert.below': '이하', 'alert.value': '기준 (%)',
-    'alert.add': '추가', 'alert.remove': '알림 삭제', 'alert.firedAt': '{time} 알림', 'alert.notTracked': '위에서 코인 추가 필요',
-    'alert.help': '바이낸스 가격(달러 × 원/달러 환율) 대비 김프입니다. 설정한 값을 넘는 순간 브라우저 알림을 보냅니다. 이 페이지가 열려 있을 때만 동작합니다.',
+    'alert.title': '김프 알림', 'alert.body': '{ex} {coin} 김프 {v}',
+    'alert.exchange': '거래소', 'alert.value': '기준 (%)',
+    'alert.add': '추가', 'alert.remove': '알림 삭제', 'alert.notTracked': '위에서 코인 추가 필요',
     'alert.denied': '브라우저 알림이 차단되어 있습니다. 브라우저 설정에서 허용해야 알림을 받을 수 있습니다.',
     'alert.unsupported': '이 브라우저는 알림을 지원하지 않습니다. 이 페이지에서만 표시됩니다.',
     'nav.notices': '공지', 'notices.title': '거래소 공지',
@@ -149,15 +148,10 @@ const dict = {
     'common.delete': '삭제', 
     
     
-    
-    
-    
     'markets.title': '마켓', 
-    
     'compare.title': '비교 차트', 
     'compare.saveAs': '현재 차트 저장', 
     'ls.title': '롱 / 숏', 
-    
     
     'ls.waiting': '체결 대기 중…', 'ls.disconnected': '재연결 중…',
     'corr.coef': '상관계수', 'corr.vs': '{asset} VS', 'corr.heatmap': '삼각 상관관계 히트맵',

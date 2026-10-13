@@ -3,26 +3,23 @@ import {
   Box, Button, Chip, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import ArbCalc from '../components/ArbCalc';
 import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
 import IndicatorStrip from '../components/IndicatorStrip';
-import KimpAlerts from '../components/KimpAlerts';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
 import { storage } from '../lib/chartUtils';
 import { useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
-import { useTickers } from '../lib/useTickers';
+import { useSharedTickers } from '../lib/sharedTickers';
 import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
 import { ExchangeTickers, TickerExchange, fetchCoinInfo, fetchOverview } from '../services/market';
 
 type Currency = 'USD' | 'KRW';
 type Mode = 'listing' | 'premium';
 
-const ALL_EXCHANGES = EXCHANGES.map(e => e.id);
 
 /** 거래소 통화 -> 표시 통화 변환 */
 const convert = (price: number, from: Currency, to: Currency, fx: number | null) => {
@@ -215,9 +212,8 @@ const Home: React.FC = () => {
   useEffect(() => storage.set('cimExchange', baseId), [baseId]);
   useEffect(() => storage.set('cimCurrency', currency), [currency]);
 
-  // CIM은 알트코인을 BTC 대비로 그리므로, BTC를 선택하지 않아도 BTC 시세는 함께 받는다
-  const tickerCoins = useMemo(() => Array.from(new Set([REF, ...coins])), [coins]);
-  const tickers = useTickers(ALL_EXCHANGES, tickerCoins, 3000);
+  // 선택 코인(+BTC) 시세는 Tools 패널과 함께 쓰는 공유 시세에서 받는다
+  const tickers = useSharedTickers();
   const info = useAsync(() => (coins.length ? fetchCoinInfo(coins) : Promise.resolve([])), [coins.join(',')], 300_000);
   const images = useMemo(() => Object.fromEntries((info.data ?? []).map(c => [c.symbol, c.image])), [info.data]);
 
@@ -317,12 +313,6 @@ const Home: React.FC = () => {
             </Tooltip>
           </Stack>
           <CompareTable coins={coins} base={base} mode={mode} currency={currency} tickers={tickers} images={images} />
-
-          {/* 차익 계산기 · 김프 알림 */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' }, gap: 2, mt: 4 }}>
-            <ArbCalc coins={coins} tickers={tickers} />
-            <KimpAlerts coins={coins} tickers={tickers} />
-          </Box>
 
           {/* CIM */}
           <Box sx={{ mt: 10, borderTop: 2, borderColor: '#3d6cf4', pt: 2 }}>
