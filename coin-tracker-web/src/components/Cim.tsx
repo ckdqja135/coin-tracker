@@ -75,6 +75,8 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
   // 알트코인은 BTC 대비 상대 등락률로 그리므로, BTC는 선택하지 않아도 기준으로 항상 받는다
   const tracked = useMemo(() => Array.from(new Set([REF, ...coins])), [coins]);
   const coinKey = tracked.join(',');
+  // 차트 옵션은 "선택한" 코인 기준이다 (BTC 선택/해제는 tracked를 바꾸지 않으므로 따로 둔다)
+  const selKey = coins.join(',');
   useEffect(() => {
     const gen = generation.current;
     // 선택 해제된 코인 제거
@@ -149,11 +151,16 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     const refAt = new Map(refPts.map(([t, v]) => [t, v]));
     const displayPoints = (c: string): [number, number][] => {
       if (c === REF) return refPts.map(([t]) => [t, 0]); // BTC = 기준선 (현재까지만)
+      if (!refPts.length) return []; // BTC 기록이 없으면 상대값을 구할 수 없다
       const pts = history.current.get(c)?.points ?? [];
       const out: [number, number][] = [];
+      // 같은 시각의 BTC 점이 없으면(체결 없는 분, BTC 재요청 실패, 실시간 점 누락 등) 그 이전 마지막 BTC 값을 쓴다
+      let j = 0;
       pts.forEach(([t, v]) => {
-        const b = refAt.get(t);
-        if (b != null) out.push([t, ((1 + v / 100) / (1 + b / 100) - 1) * 100]);
+        while (j + 1 < refPts.length && refPts[j + 1][0] <= t) j++;
+        if (refPts[j][0] > t) return;
+        const b = refPts[j][1];
+        out.push([t, ((1 + v / 100) / (1 + b / 100) - 1) * 100]);
       });
       return out;
     };
@@ -163,7 +170,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       const pts = shown.get(c) ?? [];
       const raw = history.current.get(c)?.points ?? [];
       // 범례 %: BTC는 자신의 09:00 대비 등락률, 알트는 BTC 대비 상대 등락률
-      const lastPct = c === REF ? (raw[raw.length - 1]?.[1] ?? 0) : (pts[pts.length - 1]?.[1] ?? 0);
+      const lastPct = c === REF ? raw[raw.length - 1]?.[1] : pts[pts.length - 1]?.[1];
       const price = tickers?.data[c]?.price;
       const color = COLORS[i % COLORS.length];
       return {
@@ -278,6 +285,8 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         // %: 알트코인은 BTC 대비 +면 초록, -면 빨강. BTC(기준)는 오르내림과 관계없이 같은 회색
         labelFormatter(this: any) {
           const { pct, price, isRef } = this.options.custom;
+          // 아직 값을 구하지 못했으면(기록 없음) 0% 대신 '-'
+          if (pct == null) return `${this.name} <span style="color:${text}">-</span> ${price}`;
           const color = isRef ? text : pct > 0 ? UP : pct < 0 ? DOWN : text;
           const pctText = `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
           return `${this.name} <span style="color:${color};font-weight:700">${pctText}</span> ${price}`;
@@ -353,7 +362,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     };
     // version이 기록 변경을 나타낸다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, coinKey, currency, theme.palette.mode, exchange.id, dayStart, lang]);
+  }, [version, selKey, currency, theme.palette.mode, exchange.id, dayStart, lang]);
 
   return (
     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, position: 'relative' }}>
