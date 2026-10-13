@@ -7,16 +7,18 @@ import { fetchIndicators } from '../services/market';
 
 const signed = (v: number, digits = 2) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}%`;
 
+const Sep = () => <Box component="span" sx={{ color: 'ui.ticker.border', mx: 1.5 }}>|</Box>;
+
 const Item: React.FC<{ label: string; help?: string; children: React.ReactNode }> = ({ label, help, children }) => (
   <Tooltip title={help ?? ''} disableHoverListener={!help}>
-    <Stack direction="row" alignItems="baseline" gap={0.8} sx={{ cursor: help ? 'help' : undefined, whiteSpace: 'nowrap' }}>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{label}</Typography>
-      <Typography component="div" sx={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{children}</Typography>
+    <Stack component="span" direction="row" alignItems="baseline" gap={1} sx={{ cursor: help ? 'help' : undefined, whiteSpace: 'nowrap' }}>
+      <span>{label}</span>
+      <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, color: 'ui.ticker.fg', fontVariantNumeric: 'tabular-nums' }}>{children}</Typography>
     </Stack>
   </Tooltip>
 );
 
-/** 홈 상단: 원/달러 환율 · 테더 가격과 테더 김프 · 공포탐욕 지수 */
+/** 헤더 아래 바 오른쪽: 원/달러 환율 · 테더 가격과 테더 김프 · 공포탐욕 지수 */
 const IndicatorStrip: React.FC = () => {
   const { t } = useI18n();
   const { data } = useAsync(fetchIndicators, [], 10_000);
@@ -26,30 +28,31 @@ const IndicatorStrip: React.FC = () => {
   const fngKey = `fng.${fng?.label}` as TKey;
   const fngText = fng ? (t(fngKey) === fngKey ? fng.label : t(fngKey)) : '';
   const fngColor = fng == null ? undefined : fng.value >= 55 ? UP : fng.value <= 45 ? DOWN : undefined;
+  const fngHelp = fng?.prev != null ? `${t('ind.fngHelp')} (${t('ind.yesterday', { v: String(fng.prev) })})` : t('ind.fngHelp');
 
   return (
-    <Stack direction="row" flexWrap="wrap" justifyContent="center" columnGap={3} rowGap={1}
-      sx={{ py: 1, px: 2, borderRadius: 99, bgcolor: 'ui.pill.bg', width: 'fit-content', maxWidth: '100%', mx: 'auto' }}>
+    <Stack component="span" direction="row" alignItems="center">
       {usdKrw != null && (
         <Item label={t('ind.usdKrw')}>₩ {usdKrw.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Item>
       )}
       {usdtKrw != null && (
-        <Item label={t('ind.usdt')} help={t('ind.usdtHelp')}>
-          ₩ {usdtKrw.toLocaleString('en-US')}
-          {usdtPremium != null && (
-            <Box component="span" sx={{ ml: 0.8, color: usdtPremium > 0 ? UP : usdtPremium < 0 ? DOWN : undefined }}>
-              {t('ind.usdtPremium')} {signed(usdtPremium)}
-            </Box>
-          )}
-        </Item>
+        <>
+          <Sep />
+          <Item label={t('ind.usdt')} help={t('ind.usdtHelp')}>
+            ₩ {usdtKrw.toLocaleString('en-US')}
+            {usdtPremium != null && (
+              <Box component="span" sx={{ ml: 0.8, color: usdtPremium > 0 ? UP : usdtPremium < 0 ? DOWN : undefined }}>{signed(usdtPremium)}</Box>
+            )}
+          </Item>
+        </>
       )}
       {fng && (
-        <Item label={t('ind.fng')} help={t('ind.fngHelp')}>
-          <Box component="span" sx={{ color: fngColor }}>{fng.value} {fngText}</Box>
-          {fng.prev != null && (
-            <Box component="span" sx={{ ml: 0.8, fontSize: 11, fontWeight: 400, color: 'text.secondary' }}>{t('ind.yesterday', { v: String(fng.prev) })}</Box>
-          )}
-        </Item>
+        <>
+          <Sep />
+          <Item label={t('ind.fng')} help={fngHelp}>
+            <Box component="span" sx={{ color: fngColor }}>{fng.value} {fngText}</Box>
+          </Item>
+        </>
       )}
     </Stack>
   );

@@ -1,14 +1,15 @@
 import React from 'react';
-import { Box, Container, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Container, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { useI18n } from '../i18n';
-import { fmtPrice } from '../lib/chartUtils';
+import { fmtCompact, fmtPrice } from '../lib/chartUtils';
 import { useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { fetchCoinInfo } from '../services/market';
+import IndicatorStrip from './IndicatorStrip';
 
 const Sep = () => <Box component="span" sx={{ color: 'ui.ticker.border', mx: 1.5 }}>|</Box>;
 
-/** 헤더 아래 선택 코인 요약 바 (위/아래 버튼으로 코인 전환) */
+/** 헤더 아래 선택 코인 요약 바 (위/아래 버튼으로 코인 전환) + 오른쪽에 환율·테더 김프·공포탐욕 */
 const TickerBar: React.FC = () => {
   const { t } = useI18n();
   const { coins, active, setActive } = useSelectedCoins();
@@ -33,22 +34,23 @@ const TickerBar: React.FC = () => {
           <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, color: 'ui.ticker.fg' }}>{info ? `${info.name} (${info.symbol})` : active}</Typography>
           <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color: 'ui.ticker.fg' }}>{fmtPrice(info?.price)}</Typography>
           <Sep />
-          <span>{t('ticker.change')}</span>
-          <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color }}>
-            {chgAbs != null ? chgAbs.toLocaleString('en-US', { maximumSignificantDigits: Math.abs(chgAbs) >= 1 ? undefined : 3, maximumFractionDigits: Math.abs(chgAbs) >= 1 ? 2 : undefined }) : ''} {chg != null ? `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` : ''}
-          </Typography>
-          <Sep />
-          <span>{t('ticker.high')}</span>
-          <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color: 'ui.ticker.fg' }}>{fmtPrice(info?.high24h).replace('$', '')}</Typography>
-          <Sep />
-          <span>{t('ticker.low')}</span>
-          <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color: 'ui.ticker.fg' }}>{fmtPrice(info?.low24h).replace('$', '')}</Typography>
+          {/* 오른쪽 지표 자리를 위해 24h 최고·최저는 변동에 마우스를 올리면 보여준다 */}
+          <Tooltip title={`${t('ticker.high')} ${fmtPrice(info?.high24h).replace('$', '')} · ${t('ticker.low')} ${fmtPrice(info?.low24h).replace('$', '')}`}>
+            <Box component="span" sx={{ cursor: 'help' }}>
+              <span>{t('ticker.change')}</span>
+              <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color }}>
+                {chgAbs != null ? chgAbs.toLocaleString('en-US', { maximumSignificantDigits: Math.abs(chgAbs) >= 1 ? undefined : 3, maximumFractionDigits: Math.abs(chgAbs) >= 1 ? 2 : undefined }) : ''} {chg != null ? `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` : ''}
+              </Typography>
+            </Box>
+          </Tooltip>
           <Sep />
           <span>{t('ticker.mcap')}</span>
           <Typography component="span" sx={{ fontSize: 12, fontWeight: 700, ml: 1, color: 'ui.ticker.fg' }}>
-            {info?.marketCap != null ? `$ ${info.marketCap.toLocaleString('en-US')}` : '-'}
+            {info?.marketCap != null ? `$${fmtCompact(info.marketCap)}` : '-'}
           </Typography>
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, minWidth: 24 }} />
+          {/* 원/달러 · 테더 김프 · 공포탐욕 (모든 페이지 공통) */}
+          <IndicatorStrip />
           {list.length > 1 && (
             <Stack sx={{ ml: 1 }}>
               <IconButton size="small" sx={{ p: 0, color: 'ui.ticker.fg', fontSize: 9, lineHeight: 1 }} onClick={() => step(-1)} aria-label="prev">▲</IconButton>
