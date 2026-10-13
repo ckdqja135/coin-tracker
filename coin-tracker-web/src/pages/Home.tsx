@@ -11,7 +11,7 @@ import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
 import { storage } from '../lib/chartUtils';
-import { useSelectedCoins } from '../lib/selectedCoins';
+import { PINNED_COIN, useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { useSharedTickers } from '../lib/sharedTickers';
 import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
@@ -306,10 +306,10 @@ const Home: React.FC = () => {
           <CoinSearch onSelect={pick} size="large" />
         </Box>
         <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1} sx={{ mt: 2 }}>
-          {coins.length > 0 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
+          {coins.length > 1 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
           {coins.map(c => (
             <Chip key={c} label={c} onClick={() => { setActive(c); open(); }}
-              onDelete={() => remove(c)}
+              onDelete={c === PINNED_COIN ? undefined : () => remove(c)}
               sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
           ))}
           {coins.length > 0 && (
