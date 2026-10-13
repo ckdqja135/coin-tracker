@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series, flow, indicators, liquidations } from '../controller/marketController';
+import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series, flow, indicators, liquidations, notices } from '../controller/marketController';
 
 const router = Router();
 
@@ -31,5 +31,8 @@ router.get('/indicators', indicators);
 
 // 롱/숏: 서버가 모아 둔 거래소별 청산 합계와 최근 청산
 router.get('/liquidations', liquidations);
+
+// 거래소 공지 (업비트·빗썸)
+router.get('/notices', notices);
 
 export default router;

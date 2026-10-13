@@ -687,6 +687,71 @@ export const getOverview = (): Promise<OverviewItem[]> => cached('overview', 60_
 });
 
 // ---------------------------------------------------------------------------
+// 거래소 공지 (업비트·빗썸): 상장 / 거래지원 종료 / 유의 종목 공지를 한곳에 모은다
+// ---------------------------------------------------------------------------
+export type NoticeExchange = 'upbit' | 'bithumb';
+export type NoticeKind = 'listing' | 'delisting' | 'warning' | 'other';
+export interface Notice {
+    exchange: NoticeExchange;
+    title: string;
+    category: string;
+    kind: NoticeKind;
+    /** 제목 괄호 안의 코인 심볼 (예: 깃코인(GTC) -> GTC) */
+    coins: string[];
+    url: string;
+    time: number;
+}
+
+export const classifyNotice = (title: string, categories: string[]): NoticeKind => {
+    const text = `${categories.join(' ')} ${title}`;
+    // "원화마켓 추가 기념 이벤트"처럼 상장을 언급하는 이벤트 공지는 상장으로 치지 않는다
+    if (/이벤트|에어드랍/.test(text)) return 'other';
+    if (/거래\s?지원\s?종료|상장\s?폐지/.test(text)) return 'delisting';
+    // 유의 종목 지정 "해제"는 경고가 아니다
+    if (/해제/.test(text) && /유의|경고|주의/.test(text)) return 'other';
+    if (/유의\s?종목|투자\s?유의|투자\s?경고|주의\s?종목|유의\s?촉구/.test(text)) return 'warning';
+    if (/디지털\s?자산\s?추가|신규\s?거래\s?지원|마켓\s?추가|신규\s?상장/.test(text)) return 'listing';
+    return 'other';
+};
+
+const coinsIn = (title: string) => Array.from(new Set(Array.from(title.matchAll(/\(([A-Z0-9]{2,12})\)/g), m => m[1])));
+
+const getUpbitNotices = () => cached('notices:upbit', 60_000, async (): Promise<Notice[]> => {
+    const { data } = await http.get('https://api-manager.upbit.com/api/v1/announcements', {
+        params: { os: 'web', page: 1, per_page: 30, category: 'all' },
+    });
+    return (data?.data?.notices ?? []).map((n: any) => ({
+        exchange: 'upbit' as const,
+        title: n.title,
+        category: n.category,
+        kind: classifyNotice(n.title, [n.category]),
+        coins: coinsIn(n.title),
+        url: `https://upbit.com/service_center/notice?id=${n.id}`,
+        time: Date.parse(n.first_listed_at ?? n.listed_at),
+    }));
+});
+
+const getBithumbNotices = () => cached('notices:bithumb', 60_000, async (): Promise<Notice[]> => {
+    const { data } = await http.get('https://feed-api.bithumb.com/v1/notices', { params: { count: 20 } });
+    return (Array.isArray(data) ? data : []).map((n: any) => ({
+        exchange: 'bithumb' as const,
+        title: n.title,
+        category: (n.categories ?? []).join(', '),
+        kind: classifyNotice(n.title, n.categories ?? []),
+        coins: coinsIn(n.title),
+        url: n.pc_url,
+        // 시간대 없이 한국시간으로 온다
+        time: Date.parse(`${String(n.published_at).replace(' ', 'T')}+09:00`),
+    }));
+});
+
+/** 두 거래소 공지를 최신순으로 합친다 (한쪽이 실패해도 나머지는 보여준다) */
+export const getNotices = async (): Promise<Notice[]> => {
+    const [upbit, bithumb] = await Promise.all([safe(getUpbitNotices()), safe(getBithumbNotices())]);
+    return [...(upbit ?? []), ...(bithumb ?? [])].filter(n => Number.isFinite(n.time)).sort((a, b) => b.time - a.time);
+};
+
+// ---------------------------------------------------------------------------
 // 국내 지표: 원/달러 환율, 테더(USDT) 김프, 공포·탐욕 지수 (홈 상단 줄)
 // ---------------------------------------------------------------------------
 export interface KoreaIndicators {

@@ -105,3 +105,12 @@ export interface LiquidationSnapshot {
 
 export const fetchLiquidations = async (coin: string, limit = 30): Promise<LiquidationSnapshot> =>
   (await client.get('/liquidations', { params: { coin, limit } })).data;
+
+/** 거래소 공지 (업비트·빗썸) */
+export type NoticeExchange = 'upbit' | 'bithumb';
+export type NoticeKind = 'listing' | 'delisting' | 'warning' | 'other';
+export interface Notice {
+  exchange: NoticeExchange; title: string; category: string; kind: NoticeKind; coins: string[]; url: string; time: number;
+}
+
+export const fetchNotices = async (): Promise<Notice[]> => (await client.get('/notices')).data;

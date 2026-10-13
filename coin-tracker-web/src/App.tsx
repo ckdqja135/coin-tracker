@@ -11,6 +11,7 @@ import CompareVs from './pages/CompareVs';
 import LongShort from './pages/LongShort';
 import Correlation from './pages/Correlation';
 import Calendar from './pages/Calendar';
+import Notices from './pages/Notices';
 import { About, Blog, BlogPost, Policy } from './pages/Static';
 import { SelectedCoinsProvider } from './lib/selectedCoins';
 import { ThemeMode, ThemeModeContext } from './lib/themeMode';
@@ -46,6 +47,7 @@ function App() {
               <Route path="/longs-shorts" element={<LongShort />} />
               <Route path="/correlation" element={<Correlation />} />
               <Route path="/calendar" element={<Calendar />} />
+              <Route path="/notices" element={<Notices />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/about" element={<About />} />

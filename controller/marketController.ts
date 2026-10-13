@@ -12,6 +12,7 @@ import {
     getCoinList,
     getOverview,
     getKoreaIndicators,
+    getNotices,
     getCoinInfo,
     TICKER_EXCHANGES,
     TickerExchange,
@@ -241,4 +242,16 @@ export const liquidations = (req: Request, res: Response) => {
     const coin = String(req.query.coin || 'BTC').toUpperCase();
     if (!LIQ_COINS.includes(coin as LiqCoin)) return badRequest(res, `coin must be one of ${LIQ_COINS.join(', ')}`);
     res.json(getLiquidations(coin as LiqCoin, Math.min(300, parseLimit(req.query.limit, 50))));
+};
+
+/**
+ * GET /api/market/notices
+ * 업비트·빗썸 공지 (상장 / 거래지원 종료 / 유의 종목 분류 포함)
+ */
+export const notices = async (_req: Request, res: Response) => {
+    try {
+        res.json(await getNotices());
+    } catch (err: any) {
+        handleError(res, err, 'notices');
+    }
 };

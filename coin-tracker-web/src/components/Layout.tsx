@@ -17,6 +17,7 @@ export const NAV: { to: string; key: TKey }[] = [
   { to: '/compare', key: 'nav.compare' },
   { to: '/longs-shorts', key: 'nav.longshort' },
   { to: '/correlation', key: 'nav.correlation' },
+  { to: '/notices', key: 'nav.notices' },
   { to: '/blog', key: 'nav.blog' },
   { to: '/calendar', key: 'nav.calendar' },
 ];
