@@ -61,7 +61,7 @@ const Header: React.FC = () => {
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 56 } }}>
           <IconButton sx={{ display: { md: 'none' }, color: 'ui.header.fg' }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
-          <Typography component={RouterLink} to="/" variant="h6"
+          <Typography component={RouterLink} to="/" variant="h6" onClick={() => window.scrollTo(0, 0)}
             sx={{ fontWeight: 800, color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: -0.5 }}>
             <Box component="span" sx={{ bgcolor: 'primary.main', color: '#fff', borderRadius: 1, px: 0.5, mr: 0.8, fontSize: 15 }}>◆</Box>Coin Tracker
           </Typography>

@@ -3,6 +3,7 @@ import {
   Box, Button, ButtonBase, Chip, Collapse, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useLocation } from 'react-router-dom';
 import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
@@ -245,6 +246,17 @@ const Home: React.FC = () => {
   const [resetKey, setResetKey] = useState(0);
   // 처음에는 아이콘과 검색창만 보이고, 코인을 고르면 아래 모니터 영역이 펼쳐진다 (#monitor로 유지)
   const [opened, setOpened] = useState(() => window.location.hash === '#monitor');
+  // 홈에서 로고를 다시 누르면(라우터 이동만 일어나고 화면은 그대로라) 첫 화면으로 돌아가 맨 위로 올린다.
+  // #monitor는 라우터를 거치지 않고 붙이므로, 라우터 이동이 일어났는데 주소에 #monitor가 없으면 첫 화면이다
+  const location = useLocation();
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (location.hash !== '#monitor') {
+      setOpened(false);
+      window.scrollTo(0, 0);
+    }
+  }, [location.key, location.hash]);
   const chartRef = useRef<HTMLDivElement>(null);
   const base = exchangeMeta(baseId);
 
