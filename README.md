@@ -6,13 +6,16 @@ A personal project that collects public market data from Korean and internationa
 
 | Path | Features |
 | --- | --- |
-| `/` | Coin search → exchange chart, per-exchange listing/premium table, **Coin Impulse Monitor (CIM)** (1-minute % change from the 09:00 KST open, resets daily at 09:00) |
-| `/btc`, `/eth` | BTC·ETH comparison cards against other assets (OI by exchange, indices, commodities, mining data, Fear & Greed, BTC dominance) |
+| `/` | USD/KRW · Tether premium · Fear & Greed strip, coin search → exchange chart, per-exchange listing/premium table, arbitrage calculator, kimchi premium alerts (browser notifications while the page is open), **Coin Impulse Monitor (CIM)** (1-minute % change from the 09:00 KST open, resets daily at 09:00) |
+| `/btc`, `/eth` | BTC·ETH comparison cards against other assets (OI by exchange, Upbit kimchi premium, indices, commodities, mining data, Fear & Greed, BTC dominance) |
 | `/markets` | Card charts for crypto, indices, and commodities |
 | `/compare` | Compare multiple items on one chart (moving average, linear/log/%, date range, capture, CSV, save to My Charts) |
-| `/longs-shorts` | Per-exchange (Binance·Bybit·OKX·Bitget) taker buy/sell gauge, account long/short ratio, live large trades |
+| `/longs-shorts` | Per-exchange (Binance·Bybit·OKX·Bitget) taker buy/sell gauge, account long/short ratio, live large trades, liquidations (Binance·Bybit·OKX) |
+| `/notices` | Upbit·Bithumb announcements with listing / delisting / caution tags |
 | `/correlation` | Correlation coefficients between assets, triangle heatmap |
 | `/blog`, `/calendar`, `/about`, `/policy` | Blog, economic calendar (TradingView), about·contact, privacy policy |
+
+An anonymous live chat (bottom right) is available on every page.
 
 Supports Korean/English, light (Toss style)/dark themes, and mobile layouts.
 
@@ -22,6 +25,8 @@ Supports Korean/English, light (Toss style)/dark themes, and mobile layouts.
 index.ts                  Express API server (+ serves the web build in deployment)
 service/marketService.ts  Exchange/data-provider API calls, caching, data normalization
 service/tradeAggregator.ts  Real-time trade aggregation for the Longs/Shorts page (in memory)
+service/liquidationAggregator.ts  Real-time liquidation aggregation for the Longs/Shorts page (in memory)
+socket/chatSocket.ts      Anonymous live chat (socket.io /chat namespace, last 50 messages in memory)
 service/dominanceRecorder.ts  Records BTC dominance every 10 minutes (data/btc-dominance.json)
 coin-tracker-web/         React (CRA) + MUI + Highcharts frontend
 python-analysis-server/   Separate analysis server (FastAPI)
@@ -56,6 +61,8 @@ PORT=3000 npm start   # pages + /api/* on one server
 
 - All paths except `/api/*` return `index.html` (React Router handles routing).
 - The Longs/Shorts aggregation and BTC dominance records **only accumulate while the server is running**. On restart the Longs/Shorts aggregation starts over; dominance records stay in the file and continue.
+- Live chat uses socket.io on the same origin as the pages, so with HTTPS in front it connects over `wss://` automatically. If you put a reverse proxy (nginx, etc.) in front, forward WebSocket upgrades for `/socket.io/` (`Upgrade`/`Connection` headers) and pass `X-Forwarded-For` so the chat rate limit sees real client IPs.
+- The Longs/Shorts liquidation totals and chat history also live in memory and reset on restart.
 - The `data/` folder (dominance records) is not committed to git. On the deployment server, keep it on persistent storage.
 
 ### Environment variables
