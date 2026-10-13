@@ -8,6 +8,10 @@ import { useI18n } from '../i18n';
 import { ExchangeMeta, klineOf } from '../lib/exchanges';
 import { ExchangeTickers, fetchKlinesSince } from '../services/market';
 
+// 알트코인 등락률의 기준 코인 (이 코인의 선은 0% 일직선)
+const REF = 'BTC';
+const UP = '#26a69a';
+const DOWN = '#ef5350';
 const COLORS = ['#3d6cf4', '#f7931a', '#26a69a', '#ab47bc', '#ef5350', '#00acc1', '#8d6e63', '#ec407a', '#7cb342', '#5c6bc0'];
 const DAY = 86_400_000;
 const MIN = 60_000;
@@ -34,7 +38,7 @@ type Series = { base: number; points: [number, number][] };
  */
 const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) => {
   const theme = useTheme();
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const history = useRef<Map<string, Series>>(new Map());
   const [version, setVersion] = useState(0);
   const [dayStart, setDayStart] = useState(() => dayStartOf(Date.now()));
@@ -68,15 +72,17 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     return () => clearInterval(id);
   }, []);
 
-  const coinKey = coins.join(',');
+  // 알트코인은 BTC 대비 상대 등락률로 그리므로, BTC는 선택하지 않아도 기준으로 항상 받는다
+  const tracked = useMemo(() => Array.from(new Set([REF, ...coins])), [coins]);
+  const coinKey = tracked.join(',');
   useEffect(() => {
     const gen = generation.current;
     // 선택 해제된 코인 제거
-    Array.from(history.current.keys()).forEach(c => { if (!coins.includes(c)) history.current.delete(c); });
-    const missing = coins.some(c => !history.current.has(c));
+    Array.from(history.current.keys()).forEach(c => { if (!tracked.includes(c)) history.current.delete(c); });
+    const missing = tracked.some(c => !history.current.has(c));
     if (missing) setLoading(true);
     let failed = false;
-    Promise.all(coins.map(async c => {
+    Promise.all(tracked.map(async c => {
       const { source, symbol } = klineOf(exchange, c);
       try {
         const candles = await fetchKlinesSince(source, symbol, '1m', dayStart);
@@ -107,7 +113,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     if (dayStartOf(now) !== dayStart) return;
     const minuteEnd = Math.floor(now / MIN) * MIN + MIN;
     let gap = false;
-    coins.forEach(c => {
+    tracked.forEach(c => {
       const tk = tickers.data[c];
       const s = history.current.get(c);
       if (!tk || !s) return;
@@ -137,9 +143,27 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     const grid = theme.palette.mode === 'dark' ? '#2a2f38' : '#eef0f4';
 
     const xMax = Math.max(now + 60 * MIN, dayStart + 10 * 3600_000);
-    const series: Highcharts.SeriesLineOptions[] = coins.map((c, i) => {
+
+    // 같은 시각의 BTC 등락률로 나눠 BTC 대비 상대 등락률을 구한다
+    const refPts = history.current.get(REF)?.points ?? [];
+    const refAt = new Map(refPts.map(([t, v]) => [t, v]));
+    const displayPoints = (c: string): [number, number][] => {
+      if (c === REF) return refPts.map(([t]) => [t, 0]); // BTC = 기준선 (현재까지만)
       const pts = history.current.get(c)?.points ?? [];
-      const lastPct = pts[pts.length - 1]?.[1] ?? 0;
+      const out: [number, number][] = [];
+      pts.forEach(([t, v]) => {
+        const b = refAt.get(t);
+        if (b != null) out.push([t, ((1 + v / 100) / (1 + b / 100) - 1) * 100]);
+      });
+      return out;
+    };
+    const shown = new Map(coins.map(c => [c, displayPoints(c)]));
+
+    const series: Highcharts.SeriesLineOptions[] = coins.map((c, i) => {
+      const pts = shown.get(c) ?? [];
+      const raw = history.current.get(c)?.points ?? [];
+      // 범례 %: BTC는 자신의 09:00 대비 등락률, 알트는 BTC 대비 상대 등락률
+      const lastPct = c === REF ? (raw[raw.length - 1]?.[1] ?? 0) : (pts[pts.length - 1]?.[1] ?? 0);
       const price = tickers?.data[c]?.price;
       const color = COLORS[i % COLORS.length];
       return {
@@ -149,17 +173,33 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         color,
         lineWidth: 1.5,
         // 업데이트 시 이전 점의 옵션이 병합되어 남지 않도록 점마다 라벨/마커 여부를 명시
+        // BTC는 미래 점선이 없으므로 선 끝(현재 시점)에 바로 라벨을 단다
         data: pts.map(([x, y], idx) => {
           const last = idx === pts.length - 1;
-          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: false } };
+          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: last && c === REF } };
         }),
-        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-' },
+        dataLabels: {
+          enabled: false,
+          allowOverlap: true,
+          format: '{series.name}',
+          align: 'left',
+          verticalAlign: 'middle',
+          x: 6,
+          overflow: 'allow',
+          crop: false,
+          backgroundColor: color,
+          borderRadius: 3,
+          padding: 2,
+          style: { color: '#fff', fontSize: '10px', fontWeight: '700', textOutline: 'none' },
+        },
+        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-', isRef: c === REF },
       };
     });
 
     // 미래 구간: 현재 값에서 차트 오른쪽 끝까지 점선으로 평평하게 잇고, 끝에 마켓 이름 라벨을 단다
     const future: Highcharts.SeriesLineOptions[] = coins.flatMap((c, i) => {
-      const pts = history.current.get(c)?.points ?? [];
+      if (c === REF) return []; // BTC 기준선은 현재 시각까지만 긋는다
+      const pts = shown.get(c) ?? [];
       const last = pts[pts.length - 1];
       if (!last || last[0] >= xMax) return [];
       const color = COLORS[i % COLORS.length];
@@ -234,9 +274,13 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         itemHoverStyle: { color: theme.palette.text.primary },
         symbolHeight: 7,
         symbolRadius: 4,
+        useHTML: true,
+        // %: 알트코인은 BTC 대비 +면 초록, -면 빨강. BTC(기준)는 오르내림과 관계없이 같은 회색
         labelFormatter(this: any) {
-          const { pct, price } = this.options.custom;
-          return `${this.name} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% ${price}`;
+          const { pct, price, isRef } = this.options.custom;
+          const color = isRef ? text : pct > 0 ? UP : pct < 0 ? DOWN : text;
+          const pctText = `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
+          return `${this.name} <span style="color:${color};font-weight:700">${pctText}</span> ${price}`;
         },
       },
       xAxis: {
@@ -273,20 +317,32 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         labels: { format: '{value:.1f} %', style: { color: text, fontSize: '10px' } },
         gridLineColor: grid,
         // 09:00 시가(0%) 기준선. 코인 선과 헷갈리지 않게 옅은 회색 점선으로 그린다
-        plotLines: [{ value: 0, color: theme.palette.mode === 'dark' ? '#5b6070' : '#c4cad3', width: 1, dashStyle: 'Dash', zIndex: 1 }],
+        // BTC를 선택하지 않았을 때만 0%(BTC 기준) 점선을 그린다. 선택했으면 BTC 선이 기준선이다
+        plotLines: coins.includes(REF) ? [] : [{ value: 0, color: theme.palette.mode === 'dark' ? '#5b6070' : '#c4cad3', width: 1, dashStyle: 'Dash', zIndex: 1 }],
       },
       tooltip: {
         shared: true,
         // 예: 10월 12일 21:37 / Oct 12 21:37
         xDateFormat: lang === 'ko' ? '%m월 %d일 %H:%M' : '%b %e %H:%M',
-        valueDecimals: 3,
-        valueSuffix: ' %',
+        // 알트코인: BTC 대비 값을 +초록/-빨강으로. BTC: 차트에선 0% 기준선이므로 그 시각 BTC 자신의 등락률을 회색으로
+        useHTML: true,
+        pointFormatter(this: any) {
+          const isRef = this.series.options.id === REF;
+          const v: number | undefined = isRef ? refAt.get(this.x) : this.y;
+          if (v == null) return '';
+          const color = isRef ? text : v > 0 ? UP : v < 0 ? DOWN : text;
+          const label = isRef ? ` <span style="color:${text}">(${t('home.cimRef')})</span>` : '';
+          return `<span style="color:${this.series.color}">●</span> ${this.series.name}: `
+            + `<b style="color:${color}">${v > 0 ? '+' : ''}${v.toFixed(3)} %</b>${label}<br/>`;
+        },
         backgroundColor: theme.palette.background.paper,
         borderColor: grid,
         style: { color: theme.palette.text.primary },
       },
       plotOptions: {
         series: {
+          // 하루치 1분봉은 최대 1,440개라 기본 한도(1,000개)를 넘으면 선이 그려지지 않는다
+          turboThreshold: 0,
           animation: false,
           marker: { enabled: false },
           // 마우스를 올린 선 외의 선이 흐려지지 않도록
@@ -305,7 +361,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         <ExchangeBadge ex={exchange} size={20} />
         <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{exchange.label}</Typography>
         <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-          · {Highcharts.dateFormat(lang === 'ko' ? '%m월 %d일' : '%b %e', dayStart)} 09:00 ~
+          · {Highcharts.dateFormat(lang === 'ko' ? '%m월 %d일' : '%b %e', dayStart)} 09:00 ~ · {t('home.cimVsBtc')}
         </Typography>
         {loading && <CircularProgress size={14} sx={{ ml: 1 }} />}
       </Box>

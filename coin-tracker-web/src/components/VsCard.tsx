@@ -82,7 +82,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
       { visible: false, opposite: true },
     ],
     tooltip: { shared: true, xDateFormat: '%Y-%m-%d %H:%M', valueDecimals: 2, outside: true },
-    plotOptions: { series: { animation: false, lineWidth: 1.2, marker: { enabled: false }, states: { hover: { lineWidthPlus: 0 } } } },
+    plotOptions: { series: { turboThreshold: 0, animation: false, lineWidth: 1.2, marker: { enabled: false }, states: { hover: { lineWidthPlus: 0 } } } },
     series: [
       ...(base ? [{ type: 'line' as const, name: base.short, color: dark ? BASE_COLOR_DARK : BASE_COLOR, yAxis: 0, data: markPoints(data?.b ?? [], false) }] : []),
       { type: 'line' as const, name: target.short, color: TARGET_COLOR, yAxis: base ? 1 : 0, data: markPoints(data?.tg ?? [], true) },

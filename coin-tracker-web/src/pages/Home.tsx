@@ -118,6 +118,16 @@ const CompareTable: React.FC<{
   // 기준 거래소를 맨 앞에
   const columns = [base, ...EXCHANGES.filter(e => e.id !== base.id)];
 
+  // 같은 거래소의 BTC 대비 일간 등락: +면 초록, -면 빨강. BTC는 기준이라 색을 바꾸지 않는다
+  const vsBtcColor = (ex: ExchangeMeta, coin: string): string | undefined => {
+    if (coin === 'BTC') return undefined;
+    const c = tickers[ex.id]?.data[coin]?.change24h;
+    const b = tickers[ex.id]?.data.BTC?.change24h;
+    if (c == null || b == null) return undefined;
+    const rel = ((1 + c / 100) / (1 + b / 100) - 1) * 100;
+    return rel > 0 ? UP : rel < 0 ? DOWN : undefined;
+  };
+
   return (
     <Box sx={{ overflowX: 'auto' }}>
       <Table size="small" sx={{ minWidth: 760, '& td, & th': { borderColor: 'divider' } }}>
@@ -160,7 +170,7 @@ const CompareTable: React.FC<{
                     return (
                       <TableCell key={ex.id} align="center" sx={cellSx}>
                         {mode === 'listing' && <Box sx={{ color: '#3ecf3e', fontSize: 18, lineHeight: 1 }}>✔</Box>}
-                        {fmtMoney(price, currency)}
+                        <Box component="span" sx={{ color: vsBtcColor(ex, coin) }}>{fmtMoney(price, currency)}</Box>
                       </TableCell>
                     );
                   }
@@ -203,7 +213,9 @@ const Home: React.FC = () => {
   useEffect(() => storage.set('cimExchange', baseId), [baseId]);
   useEffect(() => storage.set('cimCurrency', currency), [currency]);
 
-  const tickers = useTickers(ALL_EXCHANGES, coins, 3000);
+  // CIM은 알트코인을 BTC 대비로 그리므로, BTC를 선택하지 않아도 BTC 시세는 함께 받는다
+  const tickerCoins = useMemo(() => Array.from(new Set(['BTC', ...coins])), [coins]);
+  const tickers = useTickers(ALL_EXCHANGES, tickerCoins, 3000);
   const info = useAsync(() => (coins.length ? fetchCoinInfo(coins) : Promise.resolve([])), [coins.join(',')], 300_000);
   const images = useMemo(() => Object.fromEntries((info.data ?? []).map(c => [c.symbol, c.image])), [info.data]);
 

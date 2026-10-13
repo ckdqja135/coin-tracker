@@ -5,6 +5,8 @@ export type Lang = 'en' | 'ko';
 
 const dict = {
   en: {
+    'home.cimRef': 'base',
+    'home.cimVsBtc': 'Altcoins vs BTC',
     'ls.collecting': 'Collecting · {min} min so far', 'ls.account': 'Account L/S', 'ls.accountHelp': 'Share of accounts holding long vs short positions, published by the exchange (5-minute data).',
     'about.form.name': 'Name', 'about.form.email': 'Email', 'about.form.subject': 'Subject', 'about.form.message': 'Message', 'about.form.send': 'Send',
     'about.form.required': 'Please fill in this field.', 'about.form.badEmail': 'Please enter a valid email address.', 'about.form.note': 'Opens your mail app with this message. You can also write to',
@@ -23,7 +25,7 @@ const dict = {
     'ticker.change': '24h Change', 'ticker.high': '24h High', 'ticker.low': '24h Low', 'ticker.mcap': 'Market Cap',
     'home.clearAll': 'Clear All', 'home.reload': 'Reload', 'home.listing': 'Listing', 'home.premium': 'Premium',
     'home.currencyToggle': 'Switch USD / KRW',
-    'home.listingHelp': 'Shows whether each coin is listed on each exchange and its current price.',
+    'home.listingHelp': 'Shows whether each coin is listed on each exchange and its current price. Price is green if the coin is doing better than BTC today on that exchange, red if worse.',
     'home.premiumHelp': 'Price difference of each exchange compared with {ex} (converted to USD).',
     'home.cimHelp': 'Real-time % change of the selected coins since monitoring started (or since Reload) on the base exchange. Spot which coin moves first.',
     'calendar.title': 'Economic Calendar', 'calendar.desc': 'Upcoming macro events that can move the market.',
@@ -57,6 +59,8 @@ const dict = {
     'policy.title': 'Privacy Policy',
   },
   ko: {
+    'home.cimRef': '기준',
+    'home.cimVsBtc': '알트코인은 BTC 대비',
     'ls.collecting': '수집 중 · {min}분째', 'ls.account': '계정 롱/숏', 'ls.accountHelp': '거래소가 공개하는, 롱·숏 포지션을 가진 계정의 비중입니다 (5분 단위 데이터).',
     'about.form.name': '이름', 'about.form.email': '이메일', 'about.form.subject': '제목', 'about.form.message': '문의 내용', 'about.form.send': '보내기',
     'about.form.required': '이 항목을 입력해 주세요.', 'about.form.badEmail': '올바른 이메일 주소를 입력해 주세요.', 'about.form.note': '입력한 내용으로 메일 앱이 열립니다. 직접 보내셔도 됩니다:',
@@ -75,7 +79,7 @@ const dict = {
     'ticker.change': '24시간 변동', 'ticker.high': '24시간 고가', 'ticker.low': '24시간 저가', 'ticker.mcap': '시가총액',
     'home.clearAll': '전체 삭제', 'home.reload': '새로고침', 'home.listing': '상장', 'home.premium': '프리미엄',
     'home.currencyToggle': 'USD / KRW 전환',
-    'home.listingHelp': '거래소별 상장 여부와 현재가를 보여줍니다.',
+    'home.listingHelp': '거래소별 상장 여부와 현재가를 보여줍니다. 그 거래소에서 오늘 BTC보다 많이 오르면(덜 내리면) 가격이 초록, BTC보다 약하면 빨강입니다.',
     'home.premiumHelp': '{ex} 대비 각 거래소의 가격 차이입니다 (USD 환산).',
     'home.cimHelp': '기준 거래소에서 모니터링 시작(또는 새로고침) 시점 대비 선택한 코인들의 실시간 등락률입니다. 어떤 코인이 먼저 움직이는지 확인하세요.',
     'calendar.title': '경제 캘린더', 'calendar.desc': '시장에 영향을 줄 수 있는 주요 경제 일정입니다.',
