@@ -3,10 +3,12 @@ import {
   Box, Button, Chip, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import ArbCalc from '../components/ArbCalc';
 import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
 import IndicatorStrip from '../components/IndicatorStrip';
+import KimpAlerts from '../components/KimpAlerts';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
@@ -315,6 +317,12 @@ const Home: React.FC = () => {
             </Tooltip>
           </Stack>
           <CompareTable coins={coins} base={base} mode={mode} currency={currency} tickers={tickers} images={images} />
+
+          {/* 차익 계산기 · 김프 알림 */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' }, gap: 2, mt: 4 }}>
+            <ArbCalc coins={coins} tickers={tickers} />
+            <KimpAlerts coins={coins} tickers={tickers} />
+          </Box>
 
           {/* CIM */}
           <Box sx={{ mt: 10, borderTop: 2, borderColor: '#3d6cf4', pt: 2 }}>
