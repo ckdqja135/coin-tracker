@@ -7,8 +7,7 @@
     "start": "ts-node index.ts",
     "dev": "ts-node-dev --respawn --transpile-only index.ts",
     "client": "node coin-tracker-client/client.js",
-    "build:web": "npm --prefix coin-tracker-web run build",
-    "test": "node -r ts-node/register/transpile-only --test socket/*.test.ts"
+    "build:web": "npm --prefix coin-tracker-web run build"
   },
   "keywords": [],
   "author": "",

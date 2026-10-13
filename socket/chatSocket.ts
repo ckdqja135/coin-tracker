@@ -1,12 +1,10 @@
 import { Namespace, Server as SocketIOServer, Socket } from 'socket.io';
 import logger from '../log/logger';
-import { hasProfanity, maskProfanity, normalizeText } from './profanity';
 
 /**
  * 실시간 채팅 (/chat 네임스페이스)
  * - 로그인 없이 닉네임만으로 참여한다. 최근 메시지는 메모리에만 보관한다 (서버 재시작 시 사라짐).
  * - 스팸 방지: 메시지 길이 제한, 연결별·IP별 전송 간격/횟수 제한, 링크 금지.
- * - 욕설: 메시지의 욕설은 *로 가리고, 욕설이 든 닉네임은 거부한다.
  */
 
 export interface ChatMessage { id: string; nick: string; text: string; time: number }
@@ -22,8 +20,8 @@ const history: ChatMessage[] = [];
 const ipSent = new Map<string, number[]>();
 let seq = 0;
 
-// 정규화(전각·분해 문자 우회 방지)하고 제어 문자를 지운 뒤 공백을 정리한다
-const clean = (s: unknown, max: number) => normalizeText(typeof s === 'string' ? s : '')
+// 제어 문자를 지우고 공백을 정리한다
+const clean = (s: unknown, max: number) => (typeof s === 'string' ? s : '')
     .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -71,14 +69,12 @@ export const chatSocket = (io: SocketIOServer): void => {
             const nick = clean(payload?.nick, MAX_NICK);
             const text = clean(payload?.text, MAX_TEXT);
             if (!nick || !text) return reply({ ok: false, error: 'empty' });
-            // 전송 제한을 먼저 적용한다 (거부될 메시지도 횟수에 넣어, 거부 응답을 무제한으로 받아 갈 수 없게)
+            if (LINK_RE.test(text) || LINK_RE.test(nick)) return reply({ ok: false, error: 'link' });
             const now = Date.now();
             if (now - lastSent < MIN_GAP_MS || !allowIp(ip, now)) return reply({ ok: false, error: 'rate' });
             lastSent = now;
-            if (LINK_RE.test(text) || LINK_RE.test(nick)) return reply({ ok: false, error: 'link' });
-            if (hasProfanity(nick)) return reply({ ok: false, error: 'nick' });
 
-            const msg: ChatMessage = { id: `${now}-${++seq}`, nick, text: maskProfanity(text).text, time: now };
+            const msg: ChatMessage = { id: `${now}-${++seq}`, nick, text, time: now };
             history.push(msg);
             if (history.length > HISTORY) history.shift();
             nsp.emit('message', msg);

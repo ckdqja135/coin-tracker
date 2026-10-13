@@ -27,7 +27,6 @@ service/marketService.ts  Exchange/data-provider API calls, caching, data normal
 service/tradeAggregator.ts  Real-time trade aggregation for the Longs/Shorts page (in memory)
 service/liquidationAggregator.ts  Real-time liquidation aggregation for the Longs/Shorts page (in memory)
 socket/chatSocket.ts      Anonymous live chat (socket.io /chat namespace, last 50 messages in memory)
-socket/profanity.ts       Chat profanity filter (masks Korean/English profanity, including spaced or digit-padded variants)
 service/dominanceRecorder.ts  Records BTC dominance every 10 minutes (data/btc-dominance.json)
 coin-tracker-web/         React (CRA) + MUI + Highcharts frontend
 python-analysis-server/   Separate analysis server (FastAPI)
@@ -45,11 +44,10 @@ npm run dev                                  # API server (http://localhost:3000
 cd coin-tracker-web && PORT=3001 npm start   # Web (http://localhost:3001, /api proxies to 3000)
 ```
 
-Tests:
+Tests (frontend):
 
 ```sh
-npm test                                                           # server (chat profanity filter)
-cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false   # frontend
+cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false
 ```
 
 ## Deployment (single server)
