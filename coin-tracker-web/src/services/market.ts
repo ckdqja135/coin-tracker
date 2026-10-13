@@ -49,6 +49,12 @@ export const fetchSeries = async (kind: SeriesKind, coin: string, interval: Inte
   return data.data;
 };
 
+/** 김치 프리미엄 시계열(%): 국내 거래소 KRW 가격 vs 바이낸스 USDT 가격 × 환율 */
+export const fetchPremium = async (coin: string, exchange: 'upbit' | 'bithumb', interval: Interval, limit: number): Promise<Point[]> => {
+  const { data } = await client.get('/premium', { params: { coin, exchange, interval, limit } });
+  return data.data;
+};
+
 /** since(ms) 이후 캔들을 모두 받는다 (CIM 백필용) */
 export const fetchKlinesSince = async (source: KlineSource, symbol: string, interval: Interval, since: number): Promise<Candle[]> => {
   const { data } = await client.get('/klines', { params: { source, symbol, interval, since } });

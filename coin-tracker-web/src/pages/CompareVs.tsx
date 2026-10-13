@@ -73,6 +73,7 @@ const CompareVs: React.FC = () => {
       { key: 'crypto', title: t('group.crypto'), items: pick(i => i.group === 'crypto') },
       { key: 'd-btc', title: `${t('group.derivatives')}(BTC)`, items: pick(i => i.id.startsWith('BTC-OI')) },
       { key: 'd-eth', title: `${t('group.derivatives')}(ETH)`, items: pick(i => i.id.startsWith('ETH-OI')) },
+      { key: 'premium', title: t('group.premium'), items: pick(i => i.group === 'premium') },
       { key: 'indices', title: t('group.indices' as TKey), items: pick(i => i.group === 'indices') },
       { key: 'commodity', title: t('group.commodity' as TKey), items: pick(i => i.group === 'commodity') },
     ];
@@ -97,7 +98,9 @@ const CompareVs: React.FC = () => {
     const series: Highcharts.SeriesOptionsType[] = [];
     rows.forEach((r, i) => {
       const pts = r.points.map(p => [p.t, p.v] as [number, number]);
-      const common = { yAxis: percent ? 0 : i, color: COLORS[i % COLORS.length], compare: percent ? 'percent' : undefined } as const;
+      // 값 자체가 %인 지표(김프)는 첫 값 대비 변화율이 의미가 없으므로 차이(%p)로 비교한다
+      const compare = percent ? (r.item.unit === 'percent' ? 'value' : 'percent') : undefined;
+      const common = { yAxis: percent ? 0 : i, color: COLORS[i % COLORS.length], compare } as const;
       series.push({ type: 'line', name: r.item.label, data: pts, lineWidth: 1.6, ...common } as Highcharts.SeriesOptionsType);
       if (ma > 0) {
         series.push({ type: 'line', name: `${r.item.short} MA${ma}`, data: sma(pts, ma), dashStyle: 'ShortDash', lineWidth: 1, opacity: 0.7, ...common } as Highcharts.SeriesOptionsType);
@@ -110,7 +113,8 @@ const CompareVs: React.FC = () => {
       yAxis: percent
         ? [yAxis({ labels: { format: '{value}%', align: 'left', x: 6, style: { color: '#8b95a1' } } })]
         : rows.map((r, i) => yAxis({
-          type: scale === 'log' ? 'logarithmic' : 'linear', visible: i < 2, opposite: i % 2 === 0, gridLineWidth: i === 0 ? 1 : 0,
+          // 김프는 음수가 될 수 있어 로그 축 대신 선형 축
+          type: scale === 'log' && r.item.unit !== 'percent' ? 'logarithmic' : 'linear', visible: i < 2, opposite: i % 2 === 0, gridLineWidth: i === 0 ? 1 : 0,
           labels: { align: i % 2 === 0 ? 'left' : 'right', x: i % 2 === 0 ? 6 : -6, style: { color: COLORS[i % COLORS.length] } },
         })),
       plotOptions: { ...base.plotOptions, series: { ...base.plotOptions!.series, compareStart: true } as any },

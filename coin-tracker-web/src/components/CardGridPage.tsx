@@ -8,7 +8,7 @@ import { useI18n, TKey } from '../i18n';
 import { CatalogGroup, CatalogItem } from '../lib/catalog';
 import { storage } from '../lib/chartUtils';
 
-const GROUP_ORDER: CatalogGroup[] = ['crypto', 'derivatives', 'indices', 'commodity', 'mining', 'trending'];
+const GROUP_ORDER: CatalogGroup[] = ['crypto', 'derivatives', 'premium', 'indices', 'commodity', 'mining', 'trending'];
 
 interface Props {
   /** 사이드바 제목 / 헤더 왼쪽 이름 (예: Bitcoin) */

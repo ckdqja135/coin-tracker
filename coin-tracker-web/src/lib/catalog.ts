@@ -1,4 +1,4 @@
-import { Interval, Point, SeriesKind, fetchKlines, fetchSeries } from '../services/market';
+import { Interval, Point, SeriesKind, fetchKlines, fetchPremium, fetchSeries } from '../services/market';
 import { findAsset } from './assets';
 
 /**
@@ -6,7 +6,7 @@ import { findAsset } from './assets';
  * 가격(바이낸스·야후)과 보조 지표(거래소별 OI, 공포탐욕, 해시레이트, 난이도)를 같은 형태로 다룬다.
  */
 export type CardRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
-export type CatalogGroup = 'crypto' | 'derivatives' | 'indices' | 'commodity' | 'mining' | 'trending';
+export type CatalogGroup = 'crypto' | 'derivatives' | 'premium' | 'indices' | 'commodity' | 'mining' | 'trending';
 
 export interface CatalogItem {
   id: string;
@@ -17,6 +17,8 @@ export interface CatalogItem {
   ranges: CardRange[];
   /** 기간별로 고를 수 있는 봉 단위를 따로 정할 때 (기록 간격이 정해진 지표용) */
   intervals?: Partial<Record<CardRange, Interval[]>>;
+  /** 값 자체가 %인 지표 (김프처럼 0을 오가므로 % 비교는 차이(%p)로, 로그 축은 쓰지 않는다) */
+  unit?: 'percent';
   load: (interval: Interval, limit: number) => Promise<Point[]>;
 }
 
@@ -63,6 +65,12 @@ const oiItems = (coin: string): CatalogItem[] => [
   { id: `${coin}-OI-OKX`, label: `${coin}_Open Interest_OKX`, short: 'OI OKX', group: 'derivatives', ranges: FAST, load: series('oi-okx', coin) },
 ];
 
+// 김치 프리미엄 추이 (업비트 KRW vs 바이낸스 USDT × 환율)
+const premiumItem = (coin: string): CatalogItem => ({
+  id: `${coin}-KP-UPBIT`, label: `${coin}_Kimchi Premium_Upbit`, short: 'Kimchi Premium', group: 'premium', ranges: FAST, unit: 'percent',
+  load: (interval, limit) => fetchPremium(coin, 'upbit', interval, limit),
+});
+
 const MACRO: CatalogItem[] = [
   priceItem('DXY', 'indices', 'US Dollar Index'),
   priceItem('NDX', 'indices', 'Nasdaq 100'),
@@ -77,6 +85,7 @@ const MACRO: CatalogItem[] = [
 export const vsTargets = (base: 'BTC' | 'ETH'): CatalogItem[] => [
   priceItem(base === 'BTC' ? 'ETH' : 'BTC', 'crypto'),
   ...oiItems(base),
+  premiumItem(base),
   ...MACRO,
   ...(base === 'BTC'
     ? [
@@ -106,5 +115,7 @@ export const compareItems = (): CatalogItem[] => [
   ...['BTC', 'ETH', 'XRP', 'SOL', 'BNB', 'DOGE'].map(id => priceItem(id, 'crypto')),
   ...oiItems('BTC'),
   ...oiItems('ETH'),
+  premiumItem('BTC'),
+  premiumItem('ETH'),
   ...MACRO,
 ];
