@@ -6,6 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
+import IndicatorStrip from '../components/IndicatorStrip';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
@@ -262,6 +263,7 @@ const Home: React.FC = () => {
       {/* 검색 히어로 */}
       <Stack alignItems="center" justifyContent="center"
         sx={{ py: { xs: 5, md: 10 }, minHeight: opened && coins.length ? undefined : 'calc(100vh - 260px)' }}>
+        <Box sx={{ mb: 5, width: '100%' }}><IndicatorStrip /></Box>
         <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'primary.main', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, mb: 6 }}>◆</Box>
         <Box sx={{ width: '100%', maxWidth: 560 }}>
           <CoinSearch onSelect={pick} size="large" />

@@ -75,3 +75,13 @@ export const fetchAccountRatio = async (exchange: FlowExchange, coin: string): P
   const { data } = await client.get('/longshort', { params: { exchange, coin, period: '5m', limit: 1 } });
   return data.data?.[data.data.length - 1] ?? null;
 };
+
+/** 원/달러 환율, 테더 김프, 공포·탐욕 지수 */
+export interface KoreaIndicators {
+  usdKrw: number | null;
+  usdtKrw: number | null;
+  usdtPremium: number | null;
+  fng: { value: number; label: string; prev: number | null } | null;
+}
+
+export const fetchIndicators = async (): Promise<KoreaIndicators> => (await client.get('/indicators')).data;

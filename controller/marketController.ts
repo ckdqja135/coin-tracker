@@ -11,6 +11,7 @@ import {
     getUsdKrw,
     getCoinList,
     getOverview,
+    getKoreaIndicators,
     getCoinInfo,
     TICKER_EXCHANGES,
     TickerExchange,
@@ -217,4 +218,16 @@ export const flow = (req: Request, res: Response) => {
     const coin = String(req.query.coin || 'BTC').toUpperCase();
     if (!FLOW_COINS.includes(coin as FlowCoin)) return badRequest(res, `coin must be one of ${FLOW_COINS.join(', ')}`);
     res.json(getFlow(coin as FlowCoin, parseLimit(req.query.limit, 100)));
+};
+
+/**
+ * GET /api/market/indicators
+ * 원/달러 환율, 테더 김프, 공포·탐욕 지수
+ */
+export const indicators = async (_req: Request, res: Response) => {
+    try {
+        res.json(await getKoreaIndicators());
+    } catch (err: any) {
+        handleError(res, err, 'indicators');
+    }
 };

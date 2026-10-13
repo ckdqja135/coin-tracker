@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series, flow } from '../controller/marketController';
+import { klines, metric, longShort, premium, snapshot, tickers, coins, overview, coinInfo, series, flow, indicators } from '../controller/marketController';
 
 const router = Router();
 
@@ -25,5 +25,8 @@ router.get('/coininfo', coinInfo);
 router.get('/series', series);
 // 롱/숏: 서버가 모아 둔 거래소별 체결 합계와 최근 대형 체결
 router.get('/flow', flow);
+
+// 원/달러 환율 · 테더 김프 · 공포탐욕 지수
+router.get('/indicators', indicators);
 
 export default router;

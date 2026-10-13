@@ -7,6 +7,11 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'home.cimVsBtc': 'Altcoins vs BTC',
+    'nav.notices': 'Notices', 'notices.title': 'Exchange Notices',
+    'ind.usdKrw': 'USD/KRW', 'ind.usdt': 'USDT', 'ind.usdtPremium': 'Tether premium', 'ind.fng': 'Fear & Greed', 'ind.yesterday': 'yesterday {v}',
+    'ind.usdtHelp': 'Upbit KRW-USDT price compared with the USD/KRW exchange rate. A positive value means dollars (stablecoins) trade at a premium in Korea.',
+    'ind.fngHelp': 'Crypto Fear & Greed Index from alternative.me (0 = extreme fear, 100 = extreme greed). Updated once a day.',
+    'fng.Extreme Fear': 'Extreme Fear', 'fng.Fear': 'Fear', 'fng.Neutral': 'Neutral', 'fng.Greed': 'Greed', 'fng.Extreme Greed': 'Extreme Greed',
     'ls.collecting': 'Collecting · {min} min so far', 'ls.account': 'Account L/S', 'ls.accountHelp': 'Share of accounts holding long vs short positions, published by the exchange (5-minute data).',
     'about.form.name': 'Name', 'about.form.email': 'Email', 'about.form.subject': 'Subject', 'about.form.message': 'Message', 'about.form.send': 'Send',
     'about.form.required': 'Please fill in this field.', 'about.form.badEmail': 'Please enter a valid email address.', 'about.form.note': 'Opens your mail app with this message. You can also write to',
@@ -61,6 +66,11 @@ const dict = {
   ko: {
     'home.cimRef': '기준',
     'home.cimVsBtc': '알트코인은 BTC 대비',
+    'nav.notices': '공지', 'notices.title': '거래소 공지',
+    'ind.usdKrw': '원/달러', 'ind.usdt': '테더', 'ind.usdtPremium': '테더 김프', 'ind.fng': '공포·탐욕', 'ind.yesterday': '어제 {v}',
+    'ind.usdtHelp': '업비트 테더(KRW-USDT) 가격을 원/달러 환율과 비교한 값입니다. +면 국내에서 달러(스테이블코인)가 웃돈을 받고 거래되고 있다는 뜻입니다.',
+    'ind.fngHelp': 'alternative.me의 크립토 공포·탐욕 지수입니다 (0 = 극단적 공포, 100 = 극단적 탐욕). 하루에 한 번 갱신됩니다.',
+    'fng.Extreme Fear': '극단적 공포', 'fng.Fear': '공포', 'fng.Neutral': '중립', 'fng.Greed': '탐욕', 'fng.Extreme Greed': '극단적 탐욕',
     'ls.collecting': '수집 중 · {min}분째', 'ls.account': '계정 롱/숏', 'ls.accountHelp': '거래소가 공개하는, 롱·숏 포지션을 가진 계정의 비중입니다 (5분 단위 데이터).',
     'about.form.name': '이름', 'about.form.email': '이메일', 'about.form.subject': '제목', 'about.form.message': '문의 내용', 'about.form.send': '보내기',
     'about.form.required': '이 항목을 입력해 주세요.', 'about.form.badEmail': '올바른 이메일 주소를 입력해 주세요.', 'about.form.note': '입력한 내용으로 메일 앱이 열립니다. 직접 보내셔도 됩니다:',

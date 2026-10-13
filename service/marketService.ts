@@ -686,6 +686,40 @@ export const getOverview = (): Promise<OverviewItem[]> => cached('overview', 60_
     return items.filter((x): x is OverviewItem => x != null);
 });
 
+// ---------------------------------------------------------------------------
+// 국내 지표: 원/달러 환율, 테더(USDT) 김프, 공포·탐욕 지수 (홈 상단 줄)
+// ---------------------------------------------------------------------------
+export interface KoreaIndicators {
+    usdKrw: number | null;
+    /** 업비트 KRW-USDT 가격 */
+    usdtKrw: number | null;
+    /** 테더 김프(%) = 업비트 USDT 가격 / 환율 - 1 */
+    usdtPremium: number | null;
+    fng: { value: number; label: string; prev: number | null } | null;
+}
+
+const getFearGreed = () => cached('fng:now', 10 * 60_000, async () => {
+    const { data } = await http.get('https://api.alternative.me/fng/', { params: { limit: 2 } });
+    const [now, prev] = data?.data ?? [];
+    if (!now) return null;
+    return { value: +now.value, label: String(now.value_classification), prev: prev ? +prev.value : null };
+});
+
+const getUpbitUsdt = () => cached('upbit:usdt', 3_000, async () => {
+    const { data } = await http.get('https://api.upbit.com/v1/ticker', { params: { markets: 'KRW-USDT' } });
+    return (data?.[0]?.trade_price as number | undefined) ?? null;
+});
+
+export const getKoreaIndicators = async (): Promise<KoreaIndicators> => {
+    const [usdKrw, usdtKrw, fng] = await Promise.all([safe(getUsdKrw()), safe(getUpbitUsdt()), safe(getFearGreed())]);
+    return {
+        usdKrw: usdKrw ?? null,
+        usdtKrw: usdtKrw ?? null,
+        usdtPremium: usdKrw && usdtKrw ? (usdtKrw / usdKrw - 1) * 100 : null,
+        fng: fng ?? null,
+    };
+};
+
 export interface CoinInfo {
     symbol: string; name: string; image: string | null; price: number; change24h: number | null;
     high24h: number | null; low24h: number | null; marketCap: number | null;
