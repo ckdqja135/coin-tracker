@@ -45,10 +45,11 @@ npm run dev                                  # API server (http://localhost:3000
 cd coin-tracker-web && PORT=3001 npm start   # Web (http://localhost:3001, /api proxies to 3000)
 ```
 
-Tests (frontend):
+Tests:
 
 ```sh
-cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false
+npm test                                                           # server (chat profanity filter)
+cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false   # frontend
 ```
 
 ## Deployment (single server)

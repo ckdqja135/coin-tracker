@@ -1,6 +1,6 @@
 import { Namespace, Server as SocketIOServer, Socket } from 'socket.io';
 import logger from '../log/logger';
-import { hasProfanity, maskProfanity } from './profanity';
+import { hasProfanity, maskProfanity, normalizeText } from './profanity';
 
 /**
  * 실시간 채팅 (/chat 네임스페이스)
@@ -22,9 +22,9 @@ const history: ChatMessage[] = [];
 const ipSent = new Map<string, number[]>();
 let seq = 0;
 
-// 제어 문자를 지우고 공백을 정리한다
-const clean = (s: unknown, max: number) => (typeof s === 'string' ? s : '')
-    .replace(/[\u0000-\u001f\u007f​-‏‪-‮]/g, '')
+// 정규화(전각·분해 문자 우회 방지)하고 제어 문자를 지운 뒤 공백을 정리한다
+const clean = (s: unknown, max: number) => normalizeText(typeof s === 'string' ? s : '')
+    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
@@ -71,11 +71,12 @@ export const chatSocket = (io: SocketIOServer): void => {
             const nick = clean(payload?.nick, MAX_NICK);
             const text = clean(payload?.text, MAX_TEXT);
             if (!nick || !text) return reply({ ok: false, error: 'empty' });
-            if (LINK_RE.test(text) || LINK_RE.test(nick)) return reply({ ok: false, error: 'link' });
-            if (hasProfanity(nick)) return reply({ ok: false, error: 'nick' });
+            // 전송 제한을 먼저 적용한다 (거부될 메시지도 횟수에 넣어, 거부 응답을 무제한으로 받아 갈 수 없게)
             const now = Date.now();
             if (now - lastSent < MIN_GAP_MS || !allowIp(ip, now)) return reply({ ok: false, error: 'rate' });
             lastSent = now;
+            if (LINK_RE.test(text) || LINK_RE.test(nick)) return reply({ ok: false, error: 'link' });
+            if (hasProfanity(nick)) return reply({ ok: false, error: 'nick' });
 
             const msg: ChatMessage = { id: `${now}-${++seq}`, nick, text: maskProfanity(text).text, time: now };
             history.push(msg);
