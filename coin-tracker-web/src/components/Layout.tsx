@@ -11,6 +11,7 @@ import { FloatingProvider } from '../lib/floating';
 import { SharedTickersProvider } from '../lib/sharedTickers';
 import ChatWidget from './ChatWidget';
 import TradingTools from './TradingTools';
+import Logo from './Logo';
 import TickerBar from './TickerBar';
 
 // 헤더 메뉴 (로고가 홈 링크 역할)
@@ -61,10 +62,10 @@ const Header: React.FC = () => {
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 56 } }}>
           <IconButton sx={{ display: { md: 'none' }, color: 'ui.header.fg' }} onClick={() => setOpen(true)} aria-label="menu">☰</IconButton>
-          <Typography component={RouterLink} to="/" variant="h6" onClick={() => window.scrollTo(0, 0)}
-            sx={{ fontWeight: 800, color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap', letterSpacing: -0.5 }}>
-            <Box component="span" sx={{ bgcolor: 'primary.main', color: '#fff', borderRadius: 1, px: 0.5, mr: 0.8, fontSize: 15 }}>◆</Box>Coin Tracker
-          </Typography>
+          <Box component={RouterLink} to="/" onClick={() => window.scrollTo(0, 0)} aria-label="Coin Tracker"
+            sx={{ color: 'inherit', textDecoration: 'none' }}>
+            <Logo size={28} fontSize={20} />
+          </Box>
           <Stack direction="row" justifyContent="center" sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 1 }}>
             {NAV.map(n => (
               <Button key={n.to} component={NavLink} to={n.to} color="inherit"
@@ -113,7 +114,7 @@ const Footer: React.FC<{ full?: boolean }> = ({ full }) => {
       <Container maxWidth="lg">
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={6}>
           <Box sx={{ maxWidth: 320 }}>
-            <Typography sx={{ fontWeight: 800 }}><Box component="span" sx={{ bgcolor: 'primary.main', color: '#fff', borderRadius: 1, px: 0.5, mr: 0.8 }}>◆</Box>Coin Tracker</Typography>
+            <Logo size={24} fontSize={17} />
             <Typography variant="body2" sx={{ mt: 1, color: 'ui.footer.muted' }}>{t('footer.disclaimer')}</Typography>
           </Box>
           {col(t('footer.company'), [

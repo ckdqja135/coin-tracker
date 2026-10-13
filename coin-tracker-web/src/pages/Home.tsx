@@ -7,6 +7,7 @@ import { useLocation } from 'react-router-dom';
 import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
+import { LogoMark, Wordmark } from '../components/Logo';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
@@ -311,7 +312,10 @@ const Home: React.FC = () => {
       {/* 검색 히어로 */}
       <Stack alignItems="center" justifyContent="center"
         sx={{ py: { xs: 5, md: 10 }, minHeight: opened && coins.length ? undefined : 'calc(100vh - 260px)' }}>
-        <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: 'primary.main', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, mb: 6 }}>◆</Box>
+        <Stack direction="row" alignItems="center" gap={{ xs: 1.5, md: 2 }} sx={{ mb: 5 }}>
+          <Box sx={{ filter: 'drop-shadow(0 10px 24px rgba(47,110,240,.28))', '& svg': { width: { xs: 44, md: 56 }, height: { xs: 44, md: 56 } } }}><LogoMark size={56} /></Box>
+          <Box component="h1" sx={{ m: 0, color: 'text.primary' }}><Wordmark fontSize={{ xs: 34, md: 44 }} /></Box>
+        </Stack>
         <Box sx={{ width: '100%', maxWidth: 560 }}>
           <CoinSearch onSelect={pick} size="large" />
         </Box>
