@@ -61,7 +61,7 @@ PORT=3000 npm start   # pages + /api/* on one server
 
 - All paths except `/api/*` return `index.html` (React Router handles routing).
 - The Longs/Shorts aggregation and BTC dominance records **only accumulate while the server is running**. On restart the Longs/Shorts aggregation starts over; dominance records stay in the file and continue.
-- Live chat uses socket.io on the same origin as the pages, so with HTTPS in front it connects over `wss://` automatically. If you put a reverse proxy (nginx, etc.) in front, forward WebSocket upgrades for `/socket.io/` (`Upgrade`/`Connection` headers) and pass `X-Forwarded-For` so the chat rate limit sees real client IPs.
+- Live chat uses socket.io on the same origin as the pages, so with HTTPS in front it connects over `wss://` automatically. If you put a reverse proxy (nginx, etc.) in front, forward WebSocket upgrades for `/socket.io/` (`Upgrade`/`Connection` headers) and pass `X-Forwarded-For` (set `TRUST_PROXY`) so the chat rate limit sees real client IPs.
 - The Longs/Shorts liquidation totals and chat history also live in memory and reset on restart.
 - The `data/` folder (dominance records) is not committed to git. On the deployment server, keep it on persistent storage.
 
@@ -70,6 +70,7 @@ PORT=3000 npm start   # pages + /api/* on one server
 | Name | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | Server port |
+| `TRUST_PROXY` | `0` | Number of reverse proxies in front of the server (`1` or `true` for a single nginx). Only then is `X-Forwarded-For` used for the chat per-IP rate limit; otherwise anyone could fake their IP |
 | `ENABLE_DB_COLLECTOR` | `false` | Turns on the old collector that polls Binance every second and stores to the DB (not used by current pages) |
 | `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_DATABASE` | `localhost` / `3306` / … | MariaDB connection. The site works without a DB connection (only `/api/coin/*` history is unavailable) |
 
