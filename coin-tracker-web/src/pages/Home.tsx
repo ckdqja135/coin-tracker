@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box, Button, Chip, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
+  Box, Button, ButtonBase, Chip, Collapse, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Cim from '../components/Cim';
@@ -70,8 +70,21 @@ const OverviewStrip: React.FC = () => {
 // ---------------------------------------------------------------------------
 // 마켓 차트 (TradingView)
 // ---------------------------------------------------------------------------
-const MarketChart: React.FC<{ coin: string; listed: TickerExchange[]; onClose: () => void }> = ({ coin, listed, onClose }) => {
+/** 열림/닫힘에 따라 부드럽게 뒤집히는 화살표 */
+const Chevron: React.FC<{ up: boolean; size?: number }> = ({ up, size = 16 }) => (
+  <Box component="svg" viewBox="0 0 16 16" width={size} height={size} aria-hidden
+    sx={{ transition: 'transform .25s ease', transform: up ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
+    <path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+  </Box>
+);
+
+// ---------------------------------------------------------------------------
+const MarketChart: React.FC<{ coin: string; listed: TickerExchange[] }> = ({ coin, listed }) => {
+  const { t } = useI18n();
   const [exId, setExId] = useState<TickerExchange>('binance');
+  // 차트 접기/펼치기 (접으면 TradingView 차트를 내려 페이지가 가벼워진다). 마지막 상태를 기억한다
+  const [chartOpen, setChartOpen] = useState(() => storage.get('marketChartOpen', true));
+  useEffect(() => storage.set('marketChartOpen', chartOpen), [chartOpen]);
   const options = listed.length ? listed : (['binance'] as TickerExchange[]);
   const ex = exchangeMeta(options.includes(exId) ? exId : options[0]);
 
@@ -85,15 +98,41 @@ const MarketChart: React.FC<{ coin: string; listed: TickerExchange[]; onClose: (
             return <MenuItem key={id} value={id}>{m.market(coin).replace(/[-_/]/g, '').toUpperCase()} - {m.label}</MenuItem>;
           })}
         </Select>
-        <IconButton onClick={onClose} sx={{ bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', borderRadius: 1, '&:hover': { bgcolor: 'ui.pill.hover' } }} size="small">✕</IconButton>
+        <Box sx={{ flexGrow: 1 }} />
+        <Tooltip title={chartOpen ? t('home.chartHide') : t('home.chartShow')}>
+          <IconButton onClick={() => setChartOpen(o => !o)} aria-expanded={chartOpen} aria-label={chartOpen ? t('home.chartHide') : t('home.chartShow')} size="small"
+            sx={{ bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', borderRadius: 1, width: 34, '&:hover': { bgcolor: 'ui.pill.hover' } }}>
+            <Chevron up={chartOpen} />
+          </IconButton>
+        </Tooltip>
       </Stack>
       <Box sx={{ border: 1, borderColor: 'divider' }}>
         <OverviewStrip />
-        <TradingViewWidget
-          widget="advanced-chart"
-          height={460}
-          config={{ symbol: ex.tv(coin), interval: 'D', timezone: 'Asia/Seoul', style: '1', allow_symbol_change: true, hide_side_toolbar: true }}
-        />
+        <Collapse in={chartOpen} unmountOnExit>
+          <TradingViewWidget
+            widget="advanced-chart"
+            height={460}
+            config={{ symbol: ex.tv(coin), interval: 'D', timezone: 'Asia/Seoul', style: '1', allow_symbol_change: true, hide_side_toolbar: true }}
+          />
+        </Collapse>
+        {/* 접혀 있을 때: 차트 자리에 얇은 바를 남기고, 바를 누르면 펼친다 */}
+        <Collapse in={!chartOpen}>
+          <ButtonBase onClick={() => setChartOpen(true)} aria-label={t('home.chartShow')}
+            sx={{
+              width: '100%', height: 44, px: 2, gap: 1.2, justifyContent: 'flex-start', borderTop: 1, borderColor: 'divider',
+              color: 'text.secondary', fontFamily: 'inherit', fontSize: 13, transition: 'background-color .2s',
+              '&:hover': { bgcolor: 'ui.pill.bg', color: 'text.primary' },
+            }}>
+            <Box component="svg" viewBox="0 0 16 16" width={16} height={16} aria-hidden sx={{ color: 'primary.main', flexShrink: 0 }}>
+              <path d="M2 12l3.5-4 3 2.5L14 4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </Box>
+            <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>{ex.market(coin).replace(/[-_/]/g, '').toUpperCase()}</Box>
+            <Box component="span">· {ex.label} {t('home.chartLabel')}</Box>
+            <Box sx={{ flexGrow: 1 }} />
+            <Box component="span" sx={{ fontSize: 12 }}>{t('home.chartShow')}</Box>
+            <Chevron up={false} />
+          </ButtonBase>
+        </Collapse>
       </Box>
     </Box>
   );
@@ -284,7 +323,7 @@ const Home: React.FC = () => {
       {opened && coins.length > 0 && chartCoin && (
         <>
           <Box ref={chartRef} sx={{ scrollMarginTop: 120 }}>
-            <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} onClose={() => remove(chartCoin)} />
+            <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} />
           </Box>
 
           {/* 거래소 비교 */}

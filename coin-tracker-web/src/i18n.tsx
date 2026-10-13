@@ -7,6 +7,7 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'home.cimVsBtc': 'Altcoins vs BTC',
+    'home.chartHide': 'Collapse chart', 'home.chartShow': 'Expand', 'home.chartLabel': 'chart',
     'chat.title': 'Chat', 'chat.online': '{n} online', 'chat.close': 'Close chat', 'chat.empty': 'No messages yet. Say hi!', 'chat.connecting': 'Connecting…',
     'chat.nick': 'Nickname', 'chat.placeholder': 'Message (max 200 chars)', 'chat.send': 'Send',
     'chat.rules': 'Anonymous public chat. Links are blocked and messages are not stored permanently. Be respectful.',
@@ -85,6 +86,7 @@ const dict = {
   ko: {
     'home.cimRef': '기준',
     'home.cimVsBtc': '알트코인은 BTC 대비',
+    'home.chartHide': '차트 접기', 'home.chartShow': '펼치기', 'home.chartLabel': '차트',
     'chat.title': '채팅', 'chat.online': '{n}명 접속', 'chat.close': '채팅 닫기', 'chat.empty': '아직 메시지가 없습니다. 먼저 인사해 보세요!', 'chat.connecting': '연결 중…',
     'chat.nick': '닉네임', 'chat.placeholder': '메시지 (최대 200자)', 'chat.send': '전송',
     'chat.rules': '익명 공개 채팅입니다. 링크는 보낼 수 없고, 메시지는 영구 저장되지 않습니다. 서로 존중해 주세요.',
