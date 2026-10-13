@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Button, IconButton, Menu, MenuItem, Select, Stack, Tooltip, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import LiquidationPanel from '../components/LiquidationPanel';
 import { useI18n } from '../i18n';
 import { fmtCompact } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
@@ -297,6 +298,8 @@ const LongShort: React.FC = () => {
           })}
         </Box>
       </Box>
+
+      <LiquidationPanel coin={coin} />
     </Box>
   );
 };

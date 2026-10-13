@@ -91,3 +91,17 @@ export interface KoreaIndicators {
 }
 
 export const fetchIndicators = async (): Promise<KoreaIndicators> => (await client.get('/indicators')).data;
+
+/** 롱/숏: 서버가 모아 둔 거래소별 강제청산 합계와 최근 청산 (side = 청산된 포지션 방향) */
+export type LiqExchange = 'binance' | 'bybit' | 'okx';
+export interface Liquidation { exchange: LiqExchange; side: 'long' | 'short'; price: number; qty: number; usd: number; time: number; }
+export interface LiquidationSnapshot {
+  coin: string;
+  now: number;
+  since: Record<LiqExchange, number | null>;
+  windows: Record<string, Record<LiqExchange, { long: number; short: number }>>;
+  recent: Liquidation[];
+}
+
+export const fetchLiquidations = async (coin: string, limit = 30): Promise<LiquidationSnapshot> =>
+  (await client.get('/liquidations', { params: { coin, limit } })).data;

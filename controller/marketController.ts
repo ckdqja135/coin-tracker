@@ -29,6 +29,7 @@ import {
 } from '../service/marketService';
 import logger from '../log/logger';
 import { FLOW_COINS, FlowCoin, getFlow } from '../service/tradeAggregator';
+import { LIQ_COINS, LiqCoin, getLiquidations } from '../service/liquidationAggregator';
 
 const SYMBOL_RE = /^[A-Za-z0-9^=._-]{1,20}$/;
 
@@ -230,4 +231,14 @@ export const indicators = async (_req: Request, res: Response) => {
     } catch (err: any) {
         handleError(res, err, 'indicators');
     }
+};
+
+/**
+ * GET /api/market/liquidations?coin=BTC
+ * 서버가 모아 둔 거래소별 롱/숏 청산 합계와 최근 청산 건
+ */
+export const liquidations = (req: Request, res: Response) => {
+    const coin = String(req.query.coin || 'BTC').toUpperCase();
+    if (!LIQ_COINS.includes(coin as LiqCoin)) return badRequest(res, `coin must be one of ${LIQ_COINS.join(', ')}`);
+    res.json(getLiquidations(coin as LiqCoin, Math.min(300, parseLimit(req.query.limit, 50))));
 };

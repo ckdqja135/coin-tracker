@@ -12,6 +12,7 @@ import { fetchAllCoinSymbols, startDataCollection } from './service/coinService'
 import { registerAggregateTimers } from './service/aggregateService';
 import { startTradeAggregator } from './service/tradeAggregator';
 import { startDominanceRecorder } from './service/dominanceRecorder';
+import { startLiquidationAggregator } from './service/liquidationAggregator';
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +44,8 @@ server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
     // 롱/숏 페이지용 실시간 체결 집계 (DB 불필요)
     startTradeAggregator();
+    // 롱/숏 페이지용 실시간 청산 집계 (DB 불필요)
+    startLiquidationAggregator();
     // BTC 도미넌스 추이 기록 (data/btc-dominance.json)
     startDominanceRecorder();
 });
