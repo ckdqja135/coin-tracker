@@ -22,13 +22,15 @@ Supports Korean/English, light (Toss style)/dark themes, and mobile layouts.
 ## Layout
 
 ```
-index.ts                  Express API server (+ serves the web build in deployment)
-service/marketService.ts  Exchange/data-provider API calls, caching, data normalization
-service/tradeAggregator.ts  Real-time trade aggregation for the Longs/Shorts page (in memory)
-service/liquidationAggregator.ts  Real-time liquidation aggregation for the Longs/Shorts page (in memory)
-service/chatService.ts    Anonymous live chat over plain HTTP (GET/POST /api/chat, last 50 messages in memory)
-service/dominanceRecorder.ts  Records BTC dominance every 10 minutes (data/btc-dominance.json)
-coin-tracker-web/         React (CRA) + MUI + Highcharts frontend
+backend/                  Express API server (Node.js, TypeScript)
+  index.ts                Entry point (+ serves frontend/build in single-server deployment)
+  route/ controller/      /api/market/*, /api/chat, /api/coin/*
+  service/marketService.ts          Exchange/data-provider API calls, caching, data normalization
+  service/tradeAggregator.ts        Real-time trade aggregation for the Longs/Shorts page (in memory)
+  service/liquidationAggregator.ts  Real-time liquidation aggregation for the Longs/Shorts page (in memory)
+  service/chatService.ts            Anonymous live chat over plain HTTP (GET/POST /api/chat, last 50 messages in memory)
+  service/dominanceRecorder.ts      Records BTC dominance every 10 minutes (backend/data/btc-dominance.json)
+frontend/                 React (CRA) + MUI + Highcharts web app
 python-analysis-server/   Separate analysis server (FastAPI)
 ```
 
@@ -37,17 +39,14 @@ python-analysis-server/   Separate analysis server (FastAPI)
 Requirements: Node.js 22 or later (the server uses the built-in WebSocket)
 
 ```sh
-npm i
-npm --prefix coin-tracker-web i
-
-npm run dev                                  # API server (http://localhost:3000)
-cd coin-tracker-web && PORT=3001 npm start   # Web (http://localhost:3001, /api proxies to 3000)
+cd backend && npm i && npm run dev           # API server (http://localhost:3000)
+cd frontend && npm i && PORT=3001 npm start  # Web (http://localhost:3001, /api proxies to 3000)
 ```
 
 Tests (frontend):
 
 ```sh
-cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false
+cd frontend && CI=true npx react-scripts test --watchAll=false
 ```
 
 ## Deployment (single server)
@@ -55,15 +54,18 @@ cd coin-tracker-web && CI=true npx react-scripts test --watchAll=false
 If the web build exists, the API server serves the pages too, so you only need to run one server.
 
 ```sh
-npm run build:web     # creates coin-tracker-web/build
+cd backend
+npm run build:web     # creates frontend/build
 PORT=3000 npm start   # pages + /api/* on one server
 ```
+
+When the frontend is deployed separately (e.g. Vercel), set its root directory to `frontend` and rewrite `/api/*` to the backend server. Run only `backend` on the server.
 
 - All paths except `/api/*` return `index.html` (React Router handles routing).
 - The Longs/Shorts aggregation and BTC dominance records **only accumulate while the server is running**. On restart the Longs/Shorts aggregation starts over; dominance records stay in the file and continue.
 - Live chat uses plain HTTP requests to `/api/chat` (the page polls every few seconds), so it works wherever `/api/*` reaches the server, including a frontend on Vercel (HTTPS) that rewrites `/api/*` to an HTTP backend. No WebSocket is needed.
 - The Longs/Shorts liquidation totals and chat history also live in memory and reset on restart.
-- The `data/` folder (dominance records) is not committed to git. On the deployment server, keep it on persistent storage.
+- The `backend/data/` folder (dominance records) is not committed to git. On the deployment server, keep it on persistent storage.
 
 ### Environment variables
 
@@ -110,5 +112,5 @@ The old `/api/coin/*` history API uses MariaDB. If you need it, set the environm
 
 ```sh
 npx sequelize-cli db:migrate
-ENABLE_DB_COLLECTOR=true npm run dev
+cd backend && ENABLE_DB_COLLECTOR=true npm run dev
 ```
