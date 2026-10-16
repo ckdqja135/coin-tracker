@@ -160,7 +160,7 @@ const dict = {
     'cards.empty': '저장한 차트가 없습니다. 카드의 ♥를 눌러 추가하세요.',
     'nav.calendar': '캘린더', 'search.coins': '코인을 검색해 보세요',
     'ticker.change': '24시간 변동', 'ticker.high': '24시간 고가', 'ticker.low': '24시간 저가', 'ticker.mcap': '시가총액',
-    'home.clearAll': '전체 삭제', 'home.reload': '새로고침', 'home.listing': '상장', 'home.premium': '프리미엄',
+    'home.clearAll': '전체 삭제', 'home.reload': '리로드', 'home.listing': '상장', 'home.premium': '프리미엄',
     'home.currencyToggle': 'USD / KRW 전환',
     'home.listingHelp': '거래소별 상장 여부와 현재가를 보여줍니다. 그 거래소의 24시간 등락률이 BTC보다 높으면(덜 내리면) 가격이 초록, 낮으면 빨강입니다 (업비트는 09:00 KST 기준, 다른 거래소는 최근 24시간 기준).',
     'home.premiumHelp': '{ex} 대비 각 거래소의 가격 차이입니다 (USD 환산).',
