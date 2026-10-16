@@ -53,7 +53,7 @@ export const buildTheme = (mode: ThemeMode) => createTheme({
   },
   shape: { borderRadius: 8 },
   typography: {
-    fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     button: { textTransform: 'none' },
   },
 });
