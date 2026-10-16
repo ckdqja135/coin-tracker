@@ -52,8 +52,11 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, base, items, storageKe
     .map(g => ({ key: g, title: t(`group.${g}` as TKey), items: items.filter(i => i.group === g).map(i => ({ id: i.id, label: i.label })) }))
     .filter(g => g.items.length);
 
-  const visible = items.filter(i => (selected ? i.id === selected : true) && (!customOnly || favorites.includes(i.id)));
-  const selectedLabel = selected ? items.find(i => i.id === selected)?.short : null;
+  // ?item=이 있으면 그 차트 하나를 상세 화면으로 크게 보여 준다 (카드 클릭·사이드바·임베드 링크 공통)
+  const detailItem = selected ? items.find(i => i.id === selected) : undefined;
+  const visible = items.filter(i => !customOnly || favorites.includes(i.id));
+  const selectedLabel = detailItem?.short ?? null;
+  const open = (id: string) => { setParams({ item: id }); window.scrollTo(0, 0); };
 
   return (
     <SidebarLayout sidebar={
@@ -84,14 +87,19 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, base, items, storageKe
         </Tooltip>
       </Stack>
 
-      {visible.length === 0 ? (
+      {detailItem ? (
+        <VsCard key={detailItem.id} detail title={titleFor(detailItem)} base={base} target={detailItem}
+          favorite={favorites.includes(detailItem.id)} onToggleFavorite={() => toggleFavorite(detailItem.id)} onEmbed={() => embed(detailItem.id)}
+          onBack={() => select(null)} />
+      ) : visible.length === 0 ? (
         <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>{t('cards.empty')}</Typography>
       ) : (
         // 화면 폭에 따라 열 수가 늘어난다 (넓은 화면에서 4열 이상)
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(300px, 1fr))' }, gap: 2.5 }}>
           {visible.map(item => (
             <VsCard key={item.id} title={titleFor(item)} base={base} target={item}
-              favorite={favorites.includes(item.id)} onToggleFavorite={() => toggleFavorite(item.id)} onEmbed={() => embed(item.id)} />
+              favorite={favorites.includes(item.id)} onToggleFavorite={() => toggleFavorite(item.id)} onEmbed={() => embed(item.id)}
+              onOpen={() => open(item.id)} />
           ))}
         </Box>
       )}
