@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Autocomplete, Box, InputAdornment, TextField } from '@mui/material';
 import { useI18n } from '../i18n';
+import { NewBadge, useNewListings } from '../lib/newListings';
 import { useAsync } from '../lib/useAsync';
 import { CoinListItem, fetchCoinList } from '../services/market';
 
@@ -20,6 +21,7 @@ const CoinSearch: React.FC<Props> = ({ onSelect, size = 'small' }) => {
   const { t, lang } = useI18n();
   const { data } = useAsync(loadCoinList, []);
   const [input, setInput] = useState('');
+  const fresh = useNewListings();
 
   const options = useMemo(() => {
     const q = input.trim().toLowerCase();
@@ -46,9 +48,10 @@ const CoinSearch: React.FC<Props> = ({ onSelect, size = 'small' }) => {
       getOptionLabel={c => c.symbol}
       noOptionsText={input ? t('search.empty') : t('search.coins')}
       renderOption={(props, c) => (
-        <Box component="li" {...props} key={c.symbol} sx={{ display: 'flex', gap: 1 }}>
+        <Box component="li" {...props} key={c.symbol} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <b>{c.symbol}</b>
           <Box component="span" sx={{ color: 'text.secondary' }}>{lang === 'ko' && c.ko ? c.ko : c.en}</Box>
+          {fresh.get(c.symbol) && <NewBadge info={fresh.get(c.symbol)!} withExchange />}
         </Box>
       )}
       fullWidth

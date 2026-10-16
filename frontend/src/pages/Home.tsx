@@ -12,6 +12,7 @@ import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
 import { storage } from '../lib/chartUtils';
+import { NewBadge, useNewListings } from '../lib/newListings';
 import { PINNED_COIN, useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { useSharedTickers } from '../lib/sharedTickers';
@@ -147,6 +148,7 @@ const CompareTable: React.FC<{
   tickers: Partial<Record<TickerExchange, ExchangeTickers>>; images: Record<string, string | null>;
 }> = ({ coins, base, mode, currency, tickers, images }) => {
   const { t } = useI18n();
+  const fresh = useNewListings();
   const hl = 'ui.highlight.bg';
   const hlFg = 'ui.highlight.fg';
   const fx = Object.values(tickers).find(x => x?.usdKrw)?.usdKrw ?? null;
@@ -191,9 +193,10 @@ const CompareTable: React.FC<{
             return (
               <TableRow key={coin}>
                 <TableCell sx={{ bgcolor: hl, color: hlFg, fontWeight: 700 }}>
-                  <Stack direction="row" alignItems="center" gap={1}>
+                  <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" rowGap={0.5}>
                     {images[coin] && <Box component="img" src={images[coin]!} alt="" sx={{ width: 18, height: 18 }} />}
                     {coin}
+                    {fresh.get(coin) && <NewBadge info={fresh.get(coin)!} withExchange />}
                   </Stack>
                 </TableCell>
                 {columns.map(ex => {

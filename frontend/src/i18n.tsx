@@ -6,6 +6,7 @@ export type Lang = 'en' | 'ko';
 const dict = {
   en: {
     'home.cimRef': 'base',
+    'new.tip': 'Newly listed on {ex} ({date})',
     'home.cimVsBtc': 'Altcoins vs BTC',
     'home.chartHide': 'Collapse chart', 'home.chartShow': 'Expand', 'home.chartLabel': 'chart',
     'chat.title': 'Chat', 'chat.online': '{n} online', 'chat.close': 'Close chat', 'chat.empty': 'No messages yet. Say hi!', 'chat.connecting': 'Connecting…',
@@ -84,6 +85,7 @@ const dict = {
     'policy.title': 'Privacy Policy',
   },
   ko: {
+    'new.tip': '{ex} 신규 상장 ({date})',
     'home.cimRef': '기준',
     'home.cimVsBtc': '알트코인은 BTC 대비',
     'home.chartHide': '차트 접기', 'home.chartShow': '펼치기', 'home.chartLabel': '차트',

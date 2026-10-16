@@ -6,6 +6,7 @@ import HighchartsReact from 'highcharts-react-official';
 import ExchangeBadge from './ExchangeBadge';
 import { useI18n } from '../i18n';
 import { ExchangeMeta, klineOf } from '../lib/exchanges';
+import { NEW_COLOR, useNewListingText, useNewListings } from '../lib/newListings';
 import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
 import { ExchangeTickers, fetchKlinesSince } from '../services/market';
 
@@ -74,6 +75,10 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
   const coinKey = tracked.join(',');
   // 차트 옵션은 "선택한" 코인 기준이다 (BTC 선택/해제는 tracked를 바꾸지 않으므로 따로 둔다)
   const selKey = coins.join(',');
+  // 최근 상장 코인은 범례 이름 옆에 NEW를 붙인다
+  const fresh = useNewListings();
+  const newText = useNewListingText();
+  const newKey = coins.filter(c => fresh.has(c)).join(',');
   useEffect(() => {
     const gen = generation.current;
     // 선택 해제된 코인 제거
@@ -196,7 +201,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
           padding: 2,
           style: { color: '#fff', fontSize: '10px', fontWeight: '700', textOutline: 'none' },
         },
-        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-', isRef: c === REF },
+        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-', isRef: c === REF, isNew: fresh.get(c) ? newText(fresh.get(c)!) : null },
       };
     });
 
@@ -283,12 +288,15 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         useHTML: true,
         // %: 알트코인은 BTC 대비 +면 초록, -면 빨강. BTC(기준)는 오르내림과 관계없이 같은 회색
         labelFormatter(this: any) {
-          const { pct, price, isRef } = this.options.custom;
+          const { pct, price, isRef, isNew } = this.options.custom;
+          const name = isNew
+            ? `${this.name} <span title="${isNew}" style="background:${NEW_COLOR};color:#fff;font-size:9px;font-weight:800;padding:0 4px;border-radius:3px">NEW</span>`
+            : this.name;
           // 아직 값을 구하지 못했으면(기록 없음) 0% 대신 '-'
-          if (pct == null) return `${this.name} <span style="color:${text}">-</span> ${price}`;
+          if (pct == null) return `${name} <span style="color:${text}">-</span> ${price}`;
           const color = isRef ? text : pct > 0 ? UP : pct < 0 ? DOWN : text;
           const pctText = `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
-          return `${this.name} <span style="color:${color};font-weight:700">${pctText}</span> ${price}`;
+          return `${name} <span style="color:${color};font-weight:700">${pctText}</span> ${price}`;
         },
       },
       xAxis: {
@@ -361,7 +369,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     };
     // version이 기록 변경을 나타낸다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, selKey, currency, theme.palette.mode, exchange.id, dayStart, lang]);
+  }, [version, selKey, currency, theme.palette.mode, exchange.id, dayStart, lang, newKey]);
 
   return (
     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, position: 'relative' }}>
