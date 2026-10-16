@@ -7,7 +7,7 @@ import { useAsync } from '../lib/useAsync';
 import { CoinListItem, fetchCoinList } from '../services/market';
 
 let coinListCache: Promise<CoinListItem[]> | null = null;
-const loadCoinList = () => {
+export const loadCoinList = () => {
   if (!coinListCache) coinListCache = fetchCoinList().catch(e => { coinListCache = null; throw e; });
   return coinListCache;
 };

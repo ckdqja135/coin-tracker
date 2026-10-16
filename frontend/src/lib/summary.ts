@@ -181,17 +181,17 @@ export interface MarketSummary {
   down: number;
   gainers: Mover[];
   losers: Mover[];
-  /** 최근 24시간 공지 */
+  /** 최근 공지 (기본 24시간) */
   listings: string[];
   warnings: string[];
   delistings: string[];
 }
 
-const recentCoins = (notices: Notice[], kind: Notice['kind'], now: number) =>
-  Array.from(new Set(notices.filter(n => n.kind === kind && now - n.time < DAY).flatMap(n => n.coins)));
+const recentCoins = (notices: Notice[], kind: Notice['kind'], now: number, windowMs: number) =>
+  Array.from(new Set(notices.filter(n => n.kind === kind && now - n.time < windowMs).flatMap(n => n.coins)));
 
-/** 업비트 원화마켓 전체 시세와 공지로 오늘 시장 요약을 만든다 */
-export const summarizeMarket = (upbit: ExchangeTickers | null | undefined, notices: Notice[], now = Date.now(), top = 3): MarketSummary => {
+/** 업비트 원화마켓 전체 시세와 공지로 오늘 시장 요약을 만든다 (공지는 최근 windowMs 안의 것) */
+export const summarizeMarket = (upbit: ExchangeTickers | null | undefined, notices: Notice[], now = Date.now(), top = 3, windowMs = DAY): MarketSummary => {
   const rows = Object.entries(upbit?.data ?? {})
     .filter(([, t]) => t.change24h != null)
     .map(([coin, t]) => ({ coin, change: t.change24h as number }));
@@ -202,8 +202,8 @@ export const summarizeMarket = (upbit: ExchangeTickers | null | undefined, notic
     down: rows.filter(r => r.change < 0).length,
     gainers: sorted.slice(0, top).filter(r => r.change > 0),
     losers: sorted.slice(-top).reverse().filter(r => r.change < 0),
-    listings: recentCoins(notices, 'listing', now),
-    warnings: recentCoins(notices, 'warning', now),
-    delistings: recentCoins(notices, 'delisting', now),
+    listings: recentCoins(notices, 'listing', now, windowMs),
+    warnings: recentCoins(notices, 'warning', now, windowMs),
+    delistings: recentCoins(notices, 'delisting', now, windowMs),
   };
 };

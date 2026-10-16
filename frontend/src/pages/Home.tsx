@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box, Button, ButtonBase, Chip, Collapse, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
+  Box, Button, ButtonBase, Collapse, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
@@ -9,7 +9,8 @@ import CoinIcon from '../components/CoinIcon';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
 import { LogoMark, Wordmark } from '../components/Logo';
-import { CoinSummary, MarketSummary } from '../components/Summary';
+import { HeroSearch, TodayUpbit } from '../components/HomeMain';
+import { CoinSummary } from '../components/Summary';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
@@ -322,18 +323,38 @@ const Home: React.FC = () => {
   });
 
   // 선택 코인 칩 (첫 화면 검색창 아래, 모니터에서는 거래소 비교 위)
+  // 선택 코인 칩 (첫 화면 검색창 아래, 모니터에서는 거래소 비교 위). BTC는 고정이라 지울 수 없다
+  const textBtn = (color: string) => ({
+    height: 34, px: 0.75, border: 0, bgcolor: 'transparent', color, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+    '&:hover': { color: 'text.primary' },
+  });
   const chips = (
-    <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1}>
-      {coins.length > 1 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
+    <Stack direction="row" flexWrap="wrap" justifyContent="center" alignItems="center" gap={1} sx={{ minHeight: 36 }}>
       {coins.map(c => (
-        <Chip key={c} label={c} icon={<CoinIcon symbol={c} size={18} fallback={images[c]} />} onClick={() => { setActive(c); open(); }}
-          onDelete={c === PINNED_COIN ? undefined : () => remove(c)}
-          sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-icon': { ml: 0.75, mr: -0.25 }, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
+        <Stack key={c} direction="row" alignItems="center" gap={0.5} sx={{ height: 34, pl: 1, pr: c === PINNED_COIN ? 1.25 : 0.75, borderRadius: 99, bgcolor: 'ui.highlight.bg' }}>
+          <Stack component="button" type="button" direction="row" alignItems="center" gap={0.875} onClick={() => { setActive(c); open(); }}
+            sx={{ border: 0, bgcolor: 'transparent', p: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <CoinIcon symbol={c} size={20} fallback={images[c]} />
+            <Box component="span" sx={{ fontSize: 14, fontWeight: 700, color: 'ui.highlight.fg' }}>{c}</Box>
+          </Stack>
+          {c !== PINNED_COIN && (
+            <Box component="button" type="button" onClick={() => remove(c)} aria-label={`${c} ${t('home.remove')}`} title={t('home.remove')}
+              sx={{ width: 20, height: 20, p: 0, border: 0, borderRadius: '50%', bgcolor: 'transparent', color: 'ui.highlight.fg', fontSize: 10, cursor: 'pointer', opacity: 0.7, '&:hover': { opacity: 1 } }}>
+              ✕
+            </Box>
+          )}
+        </Stack>
       ))}
+      {coins.length > 1 && (
+        <>
+          <Box sx={{ width: '1px', height: 14, bgcolor: 'divider', mx: 0.5 }} />
+          <Box component="button" type="button" onClick={clearAll} sx={textBtn(DOWN)}>{t('home.clearAll')}</Box>
+        </>
+      )}
       {coins.length > 0 && (
-        <Button size="small" onClick={() => { setResetKey(k => k + 1); open(); }} sx={{ color: 'text.secondary', fontWeight: 600 }}>
+        <Box component="button" type="button" onClick={() => { setResetKey(k => k + 1); open(); }} sx={textBtn('text.secondary')}>
           {t('home.reload')} ⟳
-        </Button>
+        </Box>
       )}
     </Stack>
   );
@@ -342,19 +363,17 @@ const Home: React.FC = () => {
   const monitor = opened && coins.length > 0 && !!chartCoin;
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
-      {/* 검색 히어로 */}
+    <Box sx={{ maxWidth: monitor ? 1000 : 1040, mx: 'auto' }}>
+      {/* 첫 화면: 로고 · 큰 검색창 · 선택 코인 · 오늘의 업비트 */}
       {!monitor && (
-        <Stack alignItems="center" justifyContent="center" sx={{ py: { xs: 5, md: 10 }, minHeight: 'calc(100vh - 260px)' }}>
-          <Stack direction="row" alignItems="center" gap={{ xs: 1.5, md: 2 }} sx={{ mb: 5 }}>
-            <Box sx={{ filter: 'drop-shadow(0 10px 24px rgba(47,110,240,.28))', '& svg': { width: { xs: 44, md: 56 }, height: { xs: 44, md: 56 } } }}><LogoMark size={56} /></Box>
-            <Box component="h1" sx={{ m: 0, color: 'text.primary' }}><Wordmark fontSize={{ xs: 34, md: 44 }} /></Box>
+        <Stack alignItems="center" sx={{ pt: { xs: 5, md: 9 }, pb: { xs: 6, md: 12 }, px: { xs: 0, md: 0 } }}>
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <Box sx={{ '& svg': { width: { xs: 36, md: 44 }, height: { xs: 36, md: 44 } } }}><LogoMark size={44} /></Box>
+            <Box component="h1" sx={{ m: 0, color: 'text.primary', letterSpacing: '-1.2px' }}><Wordmark fontSize={{ xs: 30, md: 38 }} /></Box>
           </Stack>
-          <Box sx={{ width: '100%', maxWidth: 560 }}>
-            <CoinSearch onSelect={pick} size="large" />
-          </Box>
+          <HeroSearch onPick={pick} />
           <Box sx={{ mt: 2 }}>{chips}</Box>
-          <MarketSummary onPick={pick} />
+          <TodayUpbit onPick={pick} />
         </Stack>
       )}
 

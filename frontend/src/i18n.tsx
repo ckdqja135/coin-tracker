@@ -7,6 +7,9 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'new.tip': 'Newly listed on {ex} ({date})',
+    'hero.placeholder': 'Search by coin name or symbol', 'hero.popular': 'Popular coins', 'hero.results': 'Results {n}', 'hero.noResults': 'No matching coins',
+    'today.title': 'Today on Upbit', 'today.sub': 'KRW market · as of {time}', 'today.help': 'Upbit KRW market. Changes are since 09:00 KST. Caution and delisting notices from the last 7 days on Upbit and Bithumb. Tap a coin to add it.',
+    'today.btc': 'BTC since 09:00', 'today.up': 'Rising', 'today.down': 'Falling', 'today.last7d': 'last 7 days', 'today.none': 'None', 'home.remove': 'Remove',
     'sum.title': 'Coin summary', 'sum.help': 'Notable facts picked by fixed rules from live prices and Upbit/Bithumb notices. Not investment advice.',
     'sum.delisting': '{ex} delisting notice ({date})', 'sum.warning': '{ex} caution designation ({date})', 'sum.new': 'New on {ex} · day {days}',
     'sum.change': '{ex} 24h {v}', 'sum.changeToday': '{ex} since 09:00 {v}', 'sum.vsBtc': 'vs BTC {v}',
@@ -17,9 +20,7 @@ const dict = {
     'sum.nearHigh': 'Near 24h high', 'sum.nearLow': 'Near 24h low',
     'sum.kimp': 'Premium {v} ({ex} vs {vs})', 'sum.gap': 'Korean exchanges differ {v}% ({hi} high, {lo} low)',
     'sum.krwOnly': 'Korean exchanges only', 'sum.foreignOnly': 'Not on Korean exchanges', 'sum.empty': 'Loading prices…',
-    'mkt.title': 'Today on Upbit', 'mkt.btc': 'BTC {v}', 'mkt.breadth': '{up} up · {down} down',
-    'mkt.gainers': 'Top gainers', 'mkt.losers': 'Top losers', 'mkt.listings': 'New listings', 'mkt.warnings': 'Caution', 'mkt.delistings': 'Delisting',
-    'mkt.help': 'KRW market on Upbit, change since 09:00 KST. Notices from the last 24 hours on Upbit and Bithumb. Tap a coin to add it.',
+    'mkt.gainers': 'Top gainers', 'mkt.losers': 'Top losers', 'mkt.warnings': 'Caution', 'mkt.delistings': 'Delisting',
     'home.cimVsBtc': 'Altcoins vs BTC',
     'home.chartHide': 'Collapse chart', 'home.chartShow': 'Expand', 'home.chartLabel': 'chart',
     'chat.title': 'Chat', 'chat.resize': 'Drag to resize · double-click to reset', 'chat.online': '{n} online', 'chat.close': 'Close chat', 'chat.empty': 'No messages yet. Say hi!', 'chat.connecting': 'Connecting…',
@@ -83,13 +84,10 @@ const dict = {
     'common.capture': 'Capture',
     'common.copied': 'Link copied', 
     'common.delete': 'Delete', 
-    
-    
     'markets.title': 'Markets', 
     'compare.title': 'Compare VS', 
     'compare.saveAs': 'Save current chart', 
     'ls.title': 'Longs / Shorts', 
-    
     'ls.waiting': 'Waiting for trades…', 'ls.disconnected': 'Reconnecting…',
     'corr.coef': 'Correlation coefficient', 'corr.vs': '{asset} VS', 'corr.heatmap': 'Triangle correlation heatmap',
     'blog.title': 'Blog', 
@@ -99,6 +97,9 @@ const dict = {
   },
   ko: {
     'new.tip': '{ex} 신규 상장 ({date})',
+    'hero.placeholder': '코인 이름이나 심볼을 검색해 보세요', 'hero.popular': '인기 코인', 'hero.results': '검색 결과 {n}', 'hero.noResults': '일치하는 코인이 없습니다',
+    'today.title': '오늘의 업비트', 'today.sub': 'KRW 마켓 · {time} 기준', 'today.help': '업비트 원화마켓, 09:00 KST 대비 등락률입니다. 유의 지정·거래지원 종료는 업비트·빗썸의 최근 7일 공지입니다. 코인을 누르면 추가됩니다.',
+    'today.btc': 'BTC 09:00 이후', 'today.up': '상승 종목', 'today.down': '하락 종목', 'today.last7d': '최근 7일', 'today.none': '없음', 'home.remove': '삭제',
     'sum.title': '코인 요약', 'sum.help': '실시간 시세와 업비트·빗썸 공지에서 정해진 규칙으로 눈에 띄는 것만 골랐습니다. 투자 조언이 아닙니다.',
     'sum.delisting': '{ex} 거래지원 종료 공지 ({date})', 'sum.warning': '{ex} 유의 종목 지정 ({date})', 'sum.new': '{ex} 신규 상장 {days}일차',
     'sum.change': '{ex} 24h {v}', 'sum.changeToday': '{ex} 09:00 이후 {v}', 'sum.vsBtc': 'BTC 대비 {v}',
@@ -109,9 +110,7 @@ const dict = {
     'sum.nearHigh': '24h 고가 근처', 'sum.nearLow': '24h 저가 근처',
     'sum.kimp': '김프 {v} ({ex} vs {vs})', 'sum.gap': '국내 거래소 간 가격 차 {v}% ({hi} 높음, {lo} 낮음)',
     'sum.krwOnly': '국내 거래소에만 상장', 'sum.foreignOnly': '국내 거래소 미상장', 'sum.empty': '시세를 불러오는 중…',
-    'mkt.title': '오늘 업비트', 'mkt.btc': 'BTC {v}', 'mkt.breadth': '상승 {up} · 하락 {down}',
-    'mkt.gainers': '상승 상위', 'mkt.losers': '하락 상위', 'mkt.listings': '신규 상장', 'mkt.warnings': '유의 지정', 'mkt.delistings': '거래지원 종료',
-    'mkt.help': '업비트 원화마켓, 09:00 KST 대비 등락률입니다. 공지는 업비트·빗썸의 최근 24시간 것입니다. 코인을 누르면 추가됩니다.',
+    'mkt.gainers': '상승 상위', 'mkt.losers': '하락 상위', 'mkt.warnings': '유의 지정', 'mkt.delistings': '거래지원 종료',
     'home.cimRef': '기준',
     'home.cimVsBtc': '알트코인은 BTC 대비',
     'home.chartHide': '차트 접기', 'home.chartShow': '펼치기', 'home.chartLabel': '차트',
@@ -176,13 +175,10 @@ const dict = {
     'common.capture': '캡처',
     'common.copied': '링크가 복사되었습니다', 
     'common.delete': '삭제', 
-    
-    
     'markets.title': '마켓', 
     'compare.title': '비교 차트', 
     'compare.saveAs': '현재 차트 저장', 
     'ls.title': '롱 / 숏', 
-    
     'ls.waiting': '체결 대기 중…', 'ls.disconnected': '재연결 중…',
     'corr.coef': '상관계수', 'corr.vs': '{asset} VS', 'corr.heatmap': '삼각 상관관계 히트맵',
     'blog.title': '블로그', 
