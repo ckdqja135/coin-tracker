@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Box, CircularProgress, Stack, Tooltip, Typography } from '@mui/material';
-import { useI18n } from '../i18n';
+import { Box, CircularProgress, Stack, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import CoinIcon from '../components/CoinIcon';
+import { TKey, useI18n } from '../i18n';
 import { findAsset } from '../lib/assets';
 import { INTERVAL_MS, correlation } from '../lib/chartUtils';
 import { useAsync } from '../lib/useAsync';
@@ -17,14 +19,31 @@ const TF_CONF: Record<Tf, { interval: Interval; limit: number }> = {
 
 const UNIVERSE = [
   { id: 'BTC', name: 'Bitcoin' },
+  { id: 'ETH', name: 'Ethereum' },
   { id: 'NDX', name: 'Nasdaq' },
   { id: 'GOLD', name: 'Gold' },
-  { id: 'ETH', name: 'Ethereum' },
   { id: 'DXY', name: 'US Dollar Index' },
 ];
 
-const UP = '#5fbfab';
-const DOWN = '#e57373';
+/** 양(같은 방향)·음(반대 방향) 상관 색 */
+const usePalette = () => {
+  const dark = useTheme().palette.mode === 'dark';
+  return dark ? { pos: '#3fbf9f', neg: '#ee6a60', posRgb: '63,191,159', negRgb: '238,106,96' } : { pos: '#2f9e85', neg: '#d9554b', posRgb: '47,158,133', negRgb: '217,85,75' };
+};
+
+/** |r| 기준 강도: 0.7 강함 · 0.4 보통 · 0.2 약함 · 그 외 거의 무관 */
+const level = (r: number) => {
+  const a = Math.abs(r);
+  return a >= 0.7 ? 'strong' : a >= 0.4 ? 'moderate' : a >= 0.2 ? 'weak' : null;
+};
+const useStrength = () => {
+  const { t } = useI18n();
+  return (r: number) => {
+    const lv = level(r);
+    return lv ? `${t(`corr.lv.${lv}` as TKey)} ${r > 0 ? t('corr.pos') : t('corr.neg')}` : t('corr.none');
+  };
+};
+const signed = (r: number) => `${r > 0 ? '+' : ''}${r.toFixed(2)}`;
 
 /** 거래 시간이 다른 자산을 같은 버킷 시각에 맞춘다 (일봉은 UTC 날짜 기준) */
 const align = (candles: Candle[], interval: Interval) => {
@@ -51,172 +70,223 @@ const useUniverse = (tf: Tf) => useAsync(async () => {
   return out;
 }, [tf], 300_000);
 
-/** 연한 파스텔 색: +1 청록 ~ 0 회색 ~ -1 빨강 */
-const cellColor = (r: number | null) => {
-  if (r == null) return 'surface.empty';
-  const a = Math.min(1, Math.abs(r));
-  return r >= 0 ? `rgba(95,191,171,${0.15 + a * 0.85})` : `rgba(229,115,115,${0.15 + a * 0.85})`;
-};
-
-const TfChips: React.FC<{ value: Tf; onChange: (t: Tf) => void }> = ({ value, onChange }) => (
-  <Stack direction="row" gap={0.5}>
+const Segmented: React.FC<{ value: Tf; onChange: (t: Tf) => void }> = ({ value, onChange }) => (
+  <Stack direction="row" gap={0.25} sx={{ p: '3px', borderRadius: '9px', bgcolor: 'ui.pill.bg' }}>
     {TFS.map(tf => (
-      <Box key={tf} component="button" onClick={() => onChange(tf)}
-        sx={{
-          width: 26, height: 26, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 9, fontWeight: 700, fontFamily: 'inherit',
-          bgcolor: tf === value ? 'ui.chip.activeBg' : 'ui.chip.bg', color: tf === value ? 'ui.chip.activeFg' : 'ui.chip.fg',
-        }}>{tf}</Box>
+      <Box key={tf} component="button" type="button" onClick={() => onChange(tf)} aria-pressed={tf === value} sx={{
+        height: 28, minWidth: 38, border: 0, borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+        bgcolor: tf === value ? 'background.paper' : 'transparent', color: tf === value ? 'text.primary' : 'text.secondary',
+        boxShadow: tf === value ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+      }}>{tf}</Box>
     ))}
   </Stack>
 );
 
-const Panel: React.FC<{ title: string; actions?: React.ReactNode; children: React.ReactNode }> = ({ title, actions, children }) => (
-  <Box sx={theme => ({
-    border: 1, borderColor: 'ui.card.border', borderRadius: `${theme.palette.ui.card.radius}px`, p: 2,
-    bgcolor: 'ui.card.bg', boxShadow: theme.palette.mode === 'dark' ? 'none' : '0 1px 3px rgba(0,27,55,0.06)',
-  })}>
-    <Stack direction="row" alignItems="center" sx={{ mb: 2 }}>
-      <Typography sx={{ fontSize: 15, fontWeight: 800, flexGrow: 1 }}>{title}</Typography>
-      {actions}
-    </Stack>
-    {children}
-  </Box>
+const Card: React.FC<{ children: React.ReactNode; sx?: object }> = ({ children, sx }) => (
+  <Box sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: '18px', ...sx }}>{children}</Box>
 );
 
 const Loading = () => <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress size={26} /></Box>;
 
-const VsBars: React.FC<{ baseId: string; title: string }> = ({ baseId, title }) => {
+const BAR_COLS = { xs: '96px 1fr 92px', sm: '130px 1fr 112px' };
+
+/** 기준 자산 대비 다른 자산들의 상관계수 막대 (높은 순) */
+const VsCard: React.FC<{ baseId: string; name: string }> = ({ baseId, name }) => {
   const [tf, setTf] = useState<Tf>('1D');
   const { data, loading } = useUniverse(tf);
+  const pal = usePalette();
+  const strength = useStrength();
   const rows = useMemo(() => (data
-    ? UNIVERSE.filter(u => u.id !== baseId).map(u => ({ ...u, r: correlation(data[baseId] ?? [], data[u.id] ?? []).r }))
+    ? UNIVERSE.filter(u => u.id !== baseId)
+      .map(u => ({ ...u, r: correlation(data[baseId] ?? [], data[u.id] ?? []).r }))
+      .sort((a, b) => (b.r ?? -2) - (a.r ?? -2))
     : []), [data, baseId]);
 
   return (
-    <Panel title={title} actions={<TfChips value={tf} onChange={setTf} />}>
+    <Card sx={{ px: 3, pt: 2.75, pb: 2.25, display: 'flex', flexDirection: 'column', gap: 2.25 }}>
+      <Stack direction="row" alignItems="center" gap={1.25}>
+        <CoinIcon symbol={baseId} size={24} />
+        <Typography sx={{ fontSize: 18, fontWeight: 800, flex: 1 }}>{name} VS</Typography>
+        <Segmented value={tf} onChange={setTf} />
+      </Stack>
       {loading && !data ? <Loading /> : (
-        <Box sx={{ position: 'relative', pt: 1 }}>
-          {/* -1 / 0 / +1 눈금 */}
-          <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 9, color: 'text.secondary', px: 0.5, borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-            <span>-1</span><span>0</span><span>1</span>
-          </Stack>
-          <Box sx={{ position: 'absolute', left: '50%', top: 18, bottom: 0, width: '1px', bgcolor: 'divider' }} />
-          {rows.map(r => {
-            // 막대가 글씨를 담을 만큼 길면 막대 안쪽 시작 부분에 흰 글씨로,
-            // 짧으면 막대 바로 바깥쪽(양수는 오른쪽, 음수는 왼쪽)에 회색 글씨로 쓴다
-            const v = r.r;
-            const inside = v != null && Math.abs(v) >= 0.25;
-            const textLeft = v == null
-              ? '50%'
-              : inside
-                ? (v > 0 ? 'calc(50% + 10px)' : `calc(${50 + v * 50}% + 10px)`)
-                : (v >= 0 ? `calc(${50 + v * 50}% + 6px)` : `calc(${50 + v * 50}% - 6px)`);
-            const textShift = v == null ? 'translateX(-50%)' : !inside && v < 0 ? 'translateX(-100%)' : undefined;
-            return (
-              <Box key={r.id} sx={{ mb: 3 }}>
-                <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.75 }}>{r.name}</Typography>
-                <Box sx={{ position: 'relative', height: 28, bgcolor: 'surface.track', borderRadius: 99 }}>
-                  {v != null && Math.abs(v) > 0.005 && (
-                    <Box sx={{
-                      position: 'absolute', top: 0, bottom: 0, bgcolor: v >= 0 ? UP : DOWN,
-                      left: v >= 0 ? '50%' : `${50 + v * 50}%`, width: `${Math.abs(v) * 50}%`,
-                      borderRadius: v >= 0 ? '0 99px 99px 0' : '99px 0 0 99px',
-                    }} />
-                  )}
-                  <Typography sx={{
-                    position: 'absolute', top: 0, fontSize: 12, fontWeight: 700, lineHeight: '28px', fontVariantNumeric: 'tabular-nums',
-                    color: inside ? '#fff' : 'text.secondary', left: textLeft,
-                    transform: textShift,
-                  }}>
-                    {v == null ? 'N/A' : v.toFixed(2)}
-                  </Typography>
+        <Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: BAR_COLS, gap: 1.75, fontSize: 11.5, fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>
+            <span />
+            <Stack direction="row" justifyContent="space-between"><span>-1</span><span>0</span><span>+1</span></Stack>
+            <span />
+          </Box>
+          <Stack gap={0.75}>
+            {rows.map(row => {
+              const r = row.r;
+              const color = r == null ? 'text.disabled' : r >= 0 ? pal.pos : pal.neg;
+              const w = r == null ? 0 : Math.abs(r) * 50;
+              return (
+                <Box key={row.id} sx={{ display: 'grid', gridTemplateColumns: BAR_COLS, gap: 1.75, alignItems: 'center', height: 48 }}>
+                  <Typography sx={{ fontSize: 15, fontWeight: 700 }} noWrap>{row.name}</Typography>
+                  <Box sx={{ position: 'relative', height: 14, borderRadius: '7px', bgcolor: 'ui.pill.bg' }}>
+                    <Box sx={{ position: 'absolute', left: '50%', top: -6, bottom: -6, borderLeft: '1.5px solid', borderColor: 'text.secondary' }} />
+                    {r != null && (
+                      <Box sx={{
+                        position: 'absolute', top: 0, bottom: 0, bgcolor: color, transition: 'all .35s',
+                        left: r >= 0 ? '50%' : `${50 - w}%`, width: `${w}%`, borderRadius: r >= 0 ? '0 7px 7px 0' : '7px 0 0 7px',
+                      }} />
+                    )}
+                  </Box>
+                  <Stack alignItems="flex-end" gap="1px">
+                    <Typography sx={{ fontSize: 17, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums' }}>{r == null ? 'N/A' : signed(r)}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>{r == null ? '' : strength(r)}</Typography>
+                  </Stack>
                 </Box>
-              </Box>
-            );
-          })}
+              );
+            })}
+          </Stack>
         </Box>
       )}
-    </Panel>
+    </Card>
   );
 };
 
-const LEGEND_STOPS = [1, 0.75, 0.5, 0.25, 0, -0.25, -0.5, -0.75, -1];
-
+/** 아래 삼각 히트맵: 셀에 마우스를 올리면 오른쪽에 두 자산의 관계를 설명한다 */
 const Heatmap: React.FC = () => {
   const { t } = useI18n();
+  const pal = usePalette();
+  const strength = useStrength();
   const [tf, setTf] = useState<Tf>('1D');
+  const [hover, setHover] = useState<[number, number] | null>(null);
   const { data, loading } = useUniverse(tf);
   const matrix = useMemo(() => (data
     ? UNIVERSE.map(a => UNIVERSE.map(b => correlation(data[a.id] ?? [], data[b.id] ?? []).r))
     : null), [data]);
   const n = UNIVERSE.length;
+  const rangeLabel = t(`corr.r.${tf}` as TKey);
+
+  // 대각선을 뺀 쌍 중 |r|이 가장 큰 관계
+  const top = useMemo(() => {
+    if (!matrix) return null;
+    let best: { i: number; j: number; r: number } | null = null;
+    matrix.forEach((row, i) => row.forEach((r, j) => {
+      if (j < i && r != null && (!best || Math.abs(r) > Math.abs(best.r))) best = { i, j, r };
+    }));
+    return best as { i: number; j: number; r: number } | null;
+  }, [matrix]);
+
+  const cellBg = (r: number) => `rgba(${r >= 0 ? pal.posRgb : pal.negRgb},${(0.1 + Math.min(1, Math.abs(r)) * 0.85).toFixed(2)})`;
+  const hr = hover && matrix ? matrix[hover[0]][hover[1]] : null;
+  const desc = (r: number) => {
+    const lv = level(r);
+    if (!lv) return t('corr.descNone');
+    const key = `corr.desc${r > 0 ? 'Same' : 'Opp'}${lv === 'strong' ? 'Strong' : ''}` as TKey;
+    return t(key, { label: strength(r) });
+  };
+  const on = (k: number) => !!hover && (hover[0] === k || hover[1] === k);
 
   return (
-    <Panel title={t('corr.heatmap')} actions={<TfChips value={tf} onChange={setTf} />}>
+    <Card sx={{ px: 3, pt: 2.75, pb: 3.25, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5}>
+        <Typography sx={{ fontSize: 18, fontWeight: 800 }}>{t('corr.heatmap')}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('corr.hoverHint')}</Typography>
+        <Box sx={{ flex: 1 }} />
+        <Segmented value={tf} onChange={v => { setTf(v); setHover(null); }} />
+      </Stack>
       {loading && !matrix ? <Loading /> : matrix && (
-        <Stack direction="row" gap={4} sx={{ overflowX: 'auto', py: 1 }}>
-          <Box sx={{ flexGrow: 1, minWidth: 560 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: `110px repeat(${n}, 1fr)`, gap: 1, position: 'relative' }}>
-              {/* 왼쪽·아래 축선 */}
-              <Box sx={{ position: 'absolute', left: 113, top: 0, height: n * 66 + (n - 1) * 8 + 4, width: '1px', bgcolor: 'divider' }} />
-              <Box sx={{ position: 'absolute', left: 113, right: 0, top: n * 66 + (n - 1) * 8 + 4, height: '1px', bgcolor: 'divider' }} />
+        <Stack direction={{ xs: 'column', md: 'row' }} gap={5} alignItems="flex-start">
+          <Box sx={{ flex: 1, minWidth: 0, width: '100%', overflowX: 'auto' }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: `140px repeat(${n}, minmax(64px, 1fr))`, gap: 0.75, minWidth: 520 }}>
+              <span />
+              {UNIVERSE.map((c, j) => (
+                <Typography key={c.id} sx={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 14, lineHeight: 1.2, fontWeight: on(j) ? 800 : 600, color: on(j) ? 'text.primary' : 'text.secondary' }}>{c.name}</Typography>
+              ))}
               {UNIVERSE.map((row, i) => (
                 <React.Fragment key={row.id}>
-                  <Typography sx={{ fontSize: 12, fontWeight: 700, alignSelf: 'center', textAlign: 'right', pr: 1 }}>{row.name}</Typography>
+                  <Typography sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 1, fontSize: 14, fontWeight: on(i) ? 800 : 600, color: on(i) ? 'text.primary' : 'text.secondary' }}>{row.name}</Typography>
                   {UNIVERSE.map((col, j) => {
                     if (j > i) return <Box key={col.id} />;
-                    if (i === j) {
-                      return <Box key={col.id} sx={{ bgcolor: 'surface.empty', height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0b6c0' }}>·</Box>;
-                    }
+                    const diag = i === j;
                     const r = matrix[i][j];
+                    const active = !!hover && hover[0] === i && hover[1] === j;
                     return (
-                      <Tooltip key={col.id} title={`${row.name} × ${col.name}`}>
-                        <Box sx={{
-                          bgcolor: cellColor(r), height: 66, borderRadius: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, color: r != null && Math.abs(r) > 0.6 ? '#fff' : 'text.primary', fontVariantNumeric: 'tabular-nums',
+                      <Box key={col.id}
+                        onMouseEnter={diag || r == null ? undefined : () => setHover([i, j])}
+                        onMouseLeave={diag ? undefined : () => setHover(null)}
+                        sx={{
+                          height: 64, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 15, fontWeight: diag ? 500 : 700, fontVariantNumeric: 'tabular-nums', transition: 'background .3s',
+                          bgcolor: diag || r == null ? 'ui.pill.bg' : cellBg(r),
+                          color: diag || r == null ? 'text.secondary' : Math.abs(r) >= 0.55 ? '#fff' : 'text.primary',
+                          outline: active ? '2px solid' : 'none', outlineColor: 'text.primary', outlineOffset: '-2px',
+                          cursor: diag || r == null ? 'default' : 'pointer',
                         }}>
-                          {r == null ? 'N/A' : r.toFixed(2)}
-                        </Box>
-                      </Tooltip>
+                        {diag ? '1.00' : r == null ? 'N/A' : r.toFixed(2)}
+                      </Box>
                     );
                   })}
                 </React.Fragment>
               ))}
-              <Box />
-              {UNIVERSE.map(c => (
-                <Typography key={c.id} sx={{ fontSize: 12, fontWeight: 700, transform: 'rotate(-40deg)', transformOrigin: 'center', textAlign: 'center', whiteSpace: 'nowrap', mt: 3, mb: 3 }}>
-                  {c.name}
-                </Typography>
-              ))}
             </Box>
           </Box>
-          {/* 색상 범례 */}
-          <Stack sx={{ pt: 0.5 }}>
-            {LEGEND_STOPS.map((v, idx) => (
-              <Stack key={v} direction="row" alignItems="flex-start" gap={1} sx={{ height: 44 }}>
-                <Box sx={{ width: 4, height: idx === LEGEND_STOPS.length - 1 ? 2 : 44, bgcolor: cellColor(v === 0 ? 0.01 : v - Math.sign(v) * 0.125) }} />
-                <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: -0.8 }}>{v.toFixed(2)}</Typography>
+          <Stack gap={2} sx={{ width: { xs: '100%', md: 240 }, flexShrink: 0 }}>
+            <Stack gap={1} sx={{ minHeight: 132, px: 2.25, py: 2, borderRadius: '14px', bgcolor: 'ui.pill.bg' }}>
+              {hover && hr != null ? (
+                <>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'text.secondary' }}>{UNIVERSE[hover[0]].name} × {UNIVERSE[hover[1]].name} · {rangeLabel}</Typography>
+                  <Typography sx={{ fontSize: 32, fontWeight: 800, color: hr >= 0 ? pal.pos : pal.neg }}>{signed(hr)}</Typography>
+                  <Typography sx={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.5, color: 'text.secondary' }}>{desc(hr)}</Typography>
+                </>
+              ) : top ? (
+                <>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'text.secondary' }}>{t('corr.strongest', { range: rangeLabel })}</Typography>
+                  <Typography sx={{ fontSize: 15, fontWeight: 800 }}>{UNIVERSE[top.i].name} × {UNIVERSE[top.j].name}</Typography>
+                  <Typography sx={{ fontSize: 28, fontWeight: 800, color: top.r >= 0 ? pal.pos : pal.neg }}>{signed(top.r)}</Typography>
+                </>
+              ) : null}
+            </Stack>
+            {/* 색 범례 */}
+            <Stack gap={0.75}>
+              <Box sx={{ height: 12, borderRadius: '6px', background: (th: any) => `linear-gradient(90deg, ${pal.neg}, ${th.palette.ui.pill.bg} 50%, ${pal.pos})` }} />
+              <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                <span>-1.00</span><span>-0.5</span><span>0</span><span>+0.5</span><span>+1.00</span>
               </Stack>
-            ))}
+            </Stack>
           </Stack>
         </Stack>
       )}
-    </Panel>
+    </Card>
   );
 };
 
+const Sep = () => <Box component="span" sx={{ width: '1px', height: 13, bgcolor: 'divider' }} />;
+
 const Correlation: React.FC = () => {
   const { t } = useI18n();
+  const pal = usePalette();
   return (
-    <Box>
-      <Typography sx={{ fontSize: 24, fontWeight: 800, mb: 1 }}>{t('corr.coef')}</Typography>
-      <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 3, maxWidth: 900 }}>{t('corr.intro')}</Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 3 }}>
-        <VsBars baseId="BTC" title={t('corr.vs', { asset: 'Bitcoin' })} />
-        <VsBars baseId="ETH" title={t('corr.vs', { asset: 'Ethereum' })} />
+    <Stack gap={3} sx={{ maxWidth: 1440, mx: 'auto', pb: 4 }}>
+      <Stack gap={1.5}>
+        <Typography component="h1" sx={{ m: 0, fontSize: { xs: 24, md: 28 }, fontWeight: 800, letterSpacing: '-0.6px' }}>{t('corr.coef')}</Typography>
+        <Stack direction="row" flexWrap="wrap" alignItems="center" columnGap={1.75} rowGap={1} sx={{ fontSize: 15, fontWeight: 500, color: 'text.secondary' }}>
+          <span>{t('corr.i.range')} <Box component="b" sx={{ color: 'text.primary' }}>-1 ~ 1</Box></span>
+          <Sep />
+          <span><b style={{ color: pal.pos }}>1</b>{t('corr.i.pos')}</span>
+          <Sep />
+          <span><b style={{ color: pal.neg }}>-1</b>{t('corr.i.neg')}</span>
+          <Sep />
+          <span><Box component="b" sx={{ color: 'text.primary' }}>0</Box>{t('corr.i.zero')}</span>
+          <Sep />
+          <span>{t('corr.i.calc')}</span>
+        </Stack>
+        <Stack direction="row" flexWrap="wrap" alignItems="center" columnGap={2} rowGap={0.75} sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+          <Stack direction="row" alignItems="center" gap={0.75}><Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: pal.pos }} />{t('corr.legPos')}</Stack>
+          <Stack direction="row" alignItems="center" gap={0.75}><Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: pal.neg }} />{t('corr.legNeg')}</Stack>
+          <Box component="span" sx={{ color: 'text.disabled' }}>{t('corr.thresholds')}</Box>
+        </Stack>
+      </Stack>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 2.5 }}>
+        <VsCard baseId="BTC" name="Bitcoin" />
+        <VsCard baseId="ETH" name="Ethereum" />
       </Box>
       <Heatmap />
-    </Box>
+    </Stack>
   );
 };
 
