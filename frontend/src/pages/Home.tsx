@@ -1,266 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box, Button, ButtonBase, Collapse, IconButton, MenuItem, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { Box, Stack } from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import Cim from '../components/Cim';
 import CoinIcon from '../components/CoinIcon';
-import CoinSearch from '../components/CoinSearch';
-import ExchangeBadge from '../components/ExchangeBadge';
 import { LogoMark, Wordmark } from '../components/Logo';
 import { HeroSearch, TodayUpbit } from '../components/HomeMain';
-import { CoinSummary } from '../components/Summary';
-import TradingViewWidget from '../components/TradingViewWidget';
+import { CimCard, Currency, MacroStrip, PriceTable, Segmented, SummaryCards } from '../components/Monitor';
+import PriceChart, { MACRO_SYMBOLS, MacroSymbol } from '../components/PriceChart';
 import { useI18n } from '../i18n';
-import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
+import { exchangeMeta } from '../lib/exchanges';
 import { storage } from '../lib/chartUtils';
-import { NewBadge, useNewListings, useNotices } from '../lib/newListings';
-import { walletStatusOf } from '../lib/summary';
-import { useWallet } from '../lib/wallet';
-import { PINNED_COIN, useSelectedCoins } from '../lib/selectedCoins';
+import { MAX_COINS, PINNED_COIN, useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { useSharedTickers } from '../lib/sharedTickers';
-import { DOWN, REF, UP, relVsRef } from '../lib/vsRef';
-import { ExchangeTickers, TickerExchange, fetchCoinInfo, fetchOverview } from '../services/market';
+import { DOWN } from '../lib/vsRef';
+import { TickerExchange, fetchCoinInfo } from '../services/market';
 
-type Currency = 'USD' | 'KRW';
 type Mode = 'listing' | 'premium';
-
-
-/** 거래소 통화 -> 표시 통화 변환 */
-const convert = (price: number, from: Currency, to: Currency, fx: number | null) => {
-  if (from === to || !fx) return price;
-  return to === 'KRW' ? price * fx : price / fx;
-};
-
-const fmtMoney = (v: number | null | undefined, currency: Currency) => {
-  if (v == null || !Number.isFinite(v)) return '-';
-  if (currency === 'KRW') return `₩ ${Math.round(v).toLocaleString('en-US')}`;
-  const digits = v >= 100 ? 0 : v >= 1 ? 3 : 6;
-  return `$ ${v.toLocaleString('en-US', { maximumFractionDigits: digits })}`;
-};
-
-// ---------------------------------------------------------------------------
-// 상단 지수 스트립
-// ---------------------------------------------------------------------------
-const OverviewStrip: React.FC = () => {
-  const { data } = useAsync(fetchOverview, [], 60_000);
-  return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 1, px: 1, py: 1 }}>
-      {(data ?? []).map(it => {
-        const up = (it.changePct ?? 0) >= 0;
-        const isMcap = it.id === 'TOTAL';
-        const value = it.id === 'BTC.D' ? `${it.value.toFixed(2)}%`
-          : isMcap ? `${(it.value / 1e12).toFixed(2)} T` : it.value.toLocaleString('en-US', { maximumFractionDigits: 3 });
-        return (
-          <Box key={it.id} sx={{ minWidth: 0 }}>
-            {/* 이름이 길면 이름만 말줄임하고, 값은 한 줄로 유지한다 (예: "2.78 T"가 두 줄로 쪼개지지 않게) */}
-            <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 11, minWidth: 0 }}>
-              <Typography noWrap title={it.name} sx={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 0 }}>{it.name}</Typography>
-              <Typography sx={{ fontSize: 11, ml: 1, flexShrink: 0, whiteSpace: 'nowrap' }}>{value}</Typography>
-            </Stack>
-            {it.changePct != null && (
-              <Typography sx={{ color: up ? UP : DOWN, fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap' }}>
-                {up ? '▲' : '▼'} {Math.abs(it.changePct).toFixed(2)}%
-                <Box component="span" sx={{ fontSize: 11, ml: 0.5, fontWeight: 400 }}>
-                  {it.change != null ? (isMcap ? `${(it.change / 1e9).toFixed(1)} B` : it.change.toFixed(2)) : ''}
-                </Box>
-              </Typography>
-            )}
-          </Box>
-        );
-      })}
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// 마켓 차트 (TradingView)
-// ---------------------------------------------------------------------------
-/** 열림/닫힘에 따라 부드럽게 뒤집히는 화살표 */
-const Chevron: React.FC<{ up: boolean; size?: number }> = ({ up, size = 16 }) => (
-  <Box component="svg" viewBox="0 0 16 16" width={size} height={size} aria-hidden
-    sx={{ transition: 'transform .25s ease', transform: up ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
-    <path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-  </Box>
-);
-
-// ---------------------------------------------------------------------------
-const MarketChart: React.FC<{ coin: string; listed: TickerExchange[] }> = ({ coin, listed }) => {
-  const { t } = useI18n();
-  const [exId, setExId] = useState<TickerExchange>('binance');
-  // 차트 접기/펼치기 (접으면 TradingView 차트를 내려 페이지가 가벼워진다). 마지막 상태를 기억한다
-  const [chartOpen, setChartOpen] = useState(() => storage.get('marketChartOpen', true));
-  useEffect(() => storage.set('marketChartOpen', chartOpen), [chartOpen]);
-  const options = listed.length ? listed : (['binance'] as TickerExchange[]);
-  const ex = exchangeMeta(options.includes(exId) ? exId : options[0]);
-
-  return (
-    <Box>
-      <Stack direction="row" gap={1} sx={{ mb: 1.5 }}>
-        <Select size="small" value={ex.id} onChange={e => setExId(e.target.value as TickerExchange)}
-          sx={{ minWidth: 220, bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', fontSize: 13, fontWeight: 600, '& fieldset': { border: 0 }, '& .MuiSvgIcon-root': { color: 'ui.pill.fg' } }}>
-          {options.map(id => {
-            const m = exchangeMeta(id);
-            return <MenuItem key={id} value={id}>{m.market(coin).replace(/[-_/]/g, '').toUpperCase()} - {m.label}</MenuItem>;
-          })}
-        </Select>
-        <Box sx={{ flexGrow: 1 }} />
-        <Tooltip title={chartOpen ? t('home.chartHide') : t('home.chartShow')}>
-          <IconButton onClick={() => setChartOpen(o => !o)} aria-expanded={chartOpen} aria-label={chartOpen ? t('home.chartHide') : t('home.chartShow')} size="small"
-            sx={{ bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', borderRadius: 1, width: 34, '&:hover': { bgcolor: 'ui.pill.hover' } }}>
-            <Chevron up={chartOpen} />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-      <Box sx={{ border: 1, borderColor: 'divider' }}>
-        <OverviewStrip />
-        <Collapse in={chartOpen} unmountOnExit>
-          <TradingViewWidget
-            widget="advanced-chart"
-            height={460}
-            config={{ symbol: ex.tv(coin), interval: 'D', timezone: 'Asia/Seoul', style: '1', allow_symbol_change: true, hide_side_toolbar: true }}
-          />
-        </Collapse>
-        {/* 접혀 있을 때: 차트 자리에 얇은 바를 남기고, 바를 누르면 펼친다 */}
-        <Collapse in={!chartOpen}>
-          <ButtonBase onClick={() => setChartOpen(true)} aria-label={t('home.chartShow')}
-            sx={{
-              width: '100%', height: 44, px: 2, gap: 1.2, justifyContent: 'flex-start', borderTop: 1, borderColor: 'divider',
-              color: 'text.secondary', fontFamily: 'inherit', fontSize: 13, transition: 'background-color .2s',
-              '&:hover': { bgcolor: 'ui.pill.bg', color: 'text.primary' },
-            }}>
-            <Box component="svg" viewBox="0 0 16 16" width={16} height={16} aria-hidden sx={{ color: 'primary.main', flexShrink: 0 }}>
-              <path d="M2 12l3.5-4 3 2.5L14 4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-            </Box>
-            <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>{ex.market(coin).replace(/[-_/]/g, '').toUpperCase()}</Box>
-            <Box component="span">· {ex.label} {t('home.chartLabel')}</Box>
-            <Box sx={{ flexGrow: 1 }} />
-            <Box component="span" sx={{ fontSize: 12 }}>{t('home.chartShow')}</Box>
-            <Chevron up={false} />
-          </ButtonBase>
-        </Collapse>
-      </Box>
-    </Box>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// 거래소 비교표 (Listing / Premium)
-// ---------------------------------------------------------------------------
-const CompareTable: React.FC<{
-  coins: string[]; base: ExchangeMeta; mode: Mode; currency: Currency;
-  tickers: Partial<Record<TickerExchange, ExchangeTickers>>; images: Record<string, string | null>;
-}> = ({ coins, base, mode, currency, tickers, images }) => {
-  const { t } = useI18n();
-  const fresh = useNewListings();
-  const wallet = useWallet(coins);
-  const notices = useNotices();
-  const hl = 'ui.highlight.bg';
-  const hlFg = 'ui.highlight.fg';
-  const fx = Object.values(tickers).find(x => x?.usdKrw)?.usdKrw ?? null;
-  const priceIn = (ex: ExchangeMeta, coin: string, to: Currency) => {
-    const tk = tickers[ex.id]?.data[coin];
-    return tk ? convert(tk.price, ex.currency, to, fx) : null;
-  };
-  // 기준 거래소를 맨 앞에
-  const columns = [base, ...EXCHANGES.filter(e => e.id !== base.id)];
-
-  // 같은 거래소의 BTC 대비 등락(거래소 시세의 24시간 등락률 기준, 업비트만 09:00 KST 기준): +면 초록, -면 빨강. BTC는 기준이라 색을 바꾸지 않는다
-  const vsBtcColor = (ex: ExchangeMeta, coin: string): string | undefined => {
-    if (coin === REF) return undefined;
-    const c = tickers[ex.id]?.data[coin]?.change24h;
-    const b = tickers[ex.id]?.data[REF]?.change24h;
-    if (c == null || b == null) return undefined;
-    const rel = relVsRef(c, b);
-    return rel > 0 ? UP : rel < 0 ? DOWN : undefined;
-  };
-
-  // 입출금이 막힌 거래소는 가격 아래에 빨갛게 표시한다 (업비트는 공지 기준, 바이낸스는 알 수 없음)
-  const now = Date.now();
-  const walletTag = (ex: ExchangeMeta, coin: string) => {
-    const w = walletStatusOf(wallet, notices, ex.id, coin, now);
-    if (!w || (w.deposit && w.withdraw)) return null;
-    const key = !w.deposit && !w.withdraw ? 'wallet.both' : !w.deposit ? 'wallet.deposit' : 'wallet.withdraw';
-    return <Box sx={{ fontSize: 10, fontWeight: 800, color: DOWN, mt: 0.25 }}>{t(key)}</Box>;
-  };
-
-  return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <Table size="small" sx={{ minWidth: 760, '& td, & th': { borderColor: 'divider' } }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ bgcolor: hl, width: 130 }}>
-              <Tooltip title={mode === 'listing' ? t('home.listingHelp') : t('home.premiumHelp', { ex: base.label })}>
-                <Box component="span" sx={{ color: UP, cursor: 'help' }}>ⓘ</Box>
-              </Tooltip>
-            </TableCell>
-            {columns.map(ex => (
-              <TableCell key={ex.id} align="center" sx={{ bgcolor: ex.id === base.id ? hl : undefined, color: ex.id === base.id ? hlFg : 'text.secondary' }}>
-                <ExchangeBadge ex={ex} />
-                <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{ex.label}</Typography>
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {coins.map(coin => {
-            const basePrice = priceIn(base, coin, 'USD');
-            return (
-              <TableRow key={coin}>
-                <TableCell sx={{ bgcolor: hl, color: hlFg, fontWeight: 700 }}>
-                  <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" rowGap={0.5}>
-                    <CoinIcon symbol={coin} fallback={images[coin]} />
-                    {coin}
-                    {fresh.get(coin) && <NewBadge info={fresh.get(coin)!} withExchange />}
-                  </Stack>
-                </TableCell>
-                {columns.map(ex => {
-                  const loaded = !!tickers[ex.id];
-                  const price = priceIn(ex, coin, currency);
-                  const isBase = ex.id === base.id;
-                  const cellSx = { bgcolor: isBase ? hl : undefined, color: isBase ? hlFg : undefined, fontWeight: 600, fontSize: 12 };
-                  if (!loaded) return <TableCell key={ex.id} align="center" sx={cellSx}>…</TableCell>;
-                  if (price == null) {
-                    return <TableCell key={ex.id} align="center" sx={{ ...cellSx, color: 'text.disabled', fontSize: 18 }}>✕</TableCell>;
-                  }
-                  if (mode === 'listing' || isBase) {
-                    return (
-                      <TableCell key={ex.id} align="center" sx={cellSx}>
-                        {mode === 'listing' && <Box sx={{ color: '#3ecf3e', fontSize: 18, lineHeight: 1 }}>✔</Box>}
-                        <Box component="span" sx={{ color: vsBtcColor(ex, coin) }}>{fmtMoney(price, currency)}</Box>
-                        {walletTag(ex, coin)}
-                      </TableCell>
-                    );
-                  }
-                  const usd = priceIn(ex, coin, 'USD');
-                  const diff = basePrice && usd ? (usd / basePrice - 1) * 100 : null;
-                  return (
-                    <TableCell key={ex.id} align="center" sx={cellSx}>
-                      <Box sx={{ color: diff == null ? undefined : diff >= 0 ? UP : DOWN, textAlign: 'right' }}>
-                        {diff == null ? '-' : `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%`}
-                      </Box>
-                      {fmtMoney(price, currency)}
-                      {walletTag(ex, coin)}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Box>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // 페이지
 // ---------------------------------------------------------------------------
 const Home: React.FC = () => {
   const { t } = useI18n();
-  const theme = useTheme();
   const { coins, add, remove, clear, active, setActive } = useSelectedCoins();
   const [baseId, setBaseId] = useState<TickerExchange>(() => storage.get('cimExchange', 'upbit'));
   const [mode, setMode] = useState<Mode>('listing');
@@ -290,7 +51,17 @@ const Home: React.FC = () => {
   const images = useMemo(() => Object.fromEntries((info.data ?? []).map(c => [c.symbol, c.image])), [info.data]);
 
   const chartCoin = coins.includes(active) ? active : coins[0];
-  const listedOn = (coin: string) => EXCHANGES.filter(e => tickers[e.id]?.data[coin]).map(e => e.id);
+  // 가격 차트에 띄운 코인/지수, 차트·코인 요약 접힘 상태 (접힘은 기억한다)
+  const [chartSymbol, setChartSymbol] = useState<string>(() => chartCoin ?? 'BTC');
+  const [chartOpen, setChartOpen] = useState<boolean>(() => storage.get('marketChartOpen', true));
+  const [sumOpen, setSumOpen] = useState<boolean>(() => storage.get('coinSummaryOpen', true));
+  useEffect(() => storage.set('marketChartOpen', chartOpen), [chartOpen]);
+  useEffect(() => storage.set('coinSummaryOpen', sumOpen), [sumOpen]);
+  // 선택 코인 칩을 누르면 그 코인을 가격 차트에 띄운다. 차트의 코인이 빠지면 첫 코인으로
+  useEffect(() => { if (chartCoin && coins.includes(active)) setChartSymbol(active); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!MACRO_SYMBOLS.includes(chartSymbol as MacroSymbol) && !coins.includes(chartSymbol) && coins[0]) setChartSymbol(coins[0]);
+  }, [coins.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 새로고침 시 브라우저가 이전 스크롤 위치를 되살리지 않게, 홈에서는 스크롤을 직접 관리한다
   useEffect(() => {
@@ -316,11 +87,6 @@ const Home: React.FC = () => {
     setOpened(false);
     window.history.replaceState(null, '', window.location.pathname);
   };
-
-  const pill = (active: boolean) => ({
-    borderRadius: 99, px: 1.8, py: 0.4, fontSize: 13, fontWeight: 700, minWidth: 0,
-    bgcolor: active ? 'primary.main' : 'ui.pill.bg', color: active ? '#fff' : 'ui.pill.fg', '&:hover': { bgcolor: active ? 'primary.dark' : 'ui.pill.hover' },
-  });
 
   // 선택 코인 칩 (첫 화면 검색창 아래, 모니터에서는 거래소 비교 위)
   // 선택 코인 칩 (첫 화면 검색창 아래, 모니터에서는 거래소 비교 위). BTC는 고정이라 지울 수 없다
@@ -363,7 +129,7 @@ const Home: React.FC = () => {
   const monitor = opened && coins.length > 0 && !!chartCoin;
 
   return (
-    <Box sx={{ maxWidth: monitor ? 1000 : 1040, mx: 'auto' }}>
+    <Box sx={{ maxWidth: monitor ? 1400 : 1040, mx: 'auto' }}>
       {/* 첫 화면: 로고 · 큰 검색창 · 선택 코인 · 오늘의 업비트 */}
       {!monitor && (
         <Stack alignItems="center" sx={{ pt: { xs: 5, md: 9 }, pb: { xs: 6, md: 12 }, px: { xs: 0, md: 0 } }}>
@@ -378,52 +144,34 @@ const Home: React.FC = () => {
       )}
 
       {monitor && (
-        <>
-          <Box sx={{ pt: 2 }}>
-            <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} />
-          </Box>
-
-          <Box sx={{ mt: 6 }}>
-            <CoinSummary coins={coins} base={baseId} tickers={tickers} images={images} />
-          </Box>
-
-          {/* 거래소 비교 */}
-          <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} gap={2} sx={{ mt: 8, mb: 3 }}>
-            <Stack direction="row" gap={1} alignItems="center">
-              <Select size="small" value={baseId} onChange={e => setBaseId(e.target.value as TickerExchange)}
-                renderValue={v => (
-                  <Stack direction="row" alignItems="center" gap={1}><ExchangeBadge ex={exchangeMeta(v)} size={18} />{exchangeMeta(v).label}</Stack>
-                )}
-                sx={{ minWidth: 130, bgcolor: 'ui.pill.bg', color: 'ui.pill.fg', fontSize: 14, fontWeight: 600, '& fieldset': { border: 0 }, '& .MuiSvgIcon-root': { color: 'ui.pill.fg' } }}>
-                {EXCHANGES.map(e => (
-                  <MenuItem key={e.id} value={e.id}><Stack direction="row" alignItems="center" gap={1}><ExchangeBadge ex={e} size={18} />{e.label}</Stack></MenuItem>
-                ))}
-              </Select>
-              <Button sx={pill(mode === 'listing')} onClick={() => setMode('listing')}>{t('home.listing')}</Button>
-              <Button sx={pill(mode === 'premium')} onClick={() => setMode('premium')}>{t('home.premium')}</Button>
+        <Stack gap={3} sx={{ pt: 1, pb: 6 }}>
+          {/* 검색 · 표시 통화 · 선택 코인 */}
+          <Stack gap={1.75}>
+            <Stack direction="row" alignItems="center" gap={1.5}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <HeroSearch compact onPick={add} selected={coins} countLabel={`${coins.length} / ${MAX_COINS}`} />
+              </Box>
+              <Segmented big value={currency} onChange={setCurrency} items={[{ k: 'USD', label: 'USD' }, { k: 'KRW', label: 'KRW' }]} />
             </Stack>
-            <Box sx={{ flexGrow: 1, maxWidth: { md: 560 }, mx: { md: 'auto' } }}>
-              <CoinSearch onSelect={add} />
-            </Box>
-            <Tooltip title={t('home.currencyToggle')}>
-              <Button size="small" onClick={() => setCurrency(c => (c === 'USD' ? 'KRW' : 'USD'))}
-                sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1, '&:hover': { bgcolor: 'ui.pill.hover' } }}>
-                {currency} ⇄
-              </Button>
-            </Tooltip>
+            <Box sx={{ '& > div': { justifyContent: 'flex-start' } }}>{chips}</Box>
           </Stack>
-          <Box sx={{ mb: 2 }}>{chips}</Box>
-          <CompareTable coins={coins} base={base} mode={mode} currency={currency} tickers={tickers} images={images} />
 
-          {/* CIM */}
-          <Box sx={{ mt: 10, borderTop: 2, borderColor: '#3d6cf4', pt: 2 }}>
-            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-              <Typography sx={{ fontSize: 18, fontWeight: 700, color: theme.palette.text.primary }}>Coin Impulse Monitor (CIM)</Typography>
-              <Tooltip title={t('home.cimHelp')}><Box component="span" sx={{ color: 'text.secondary', cursor: 'help' }}>ⓘ</Box></Tooltip>
-            </Stack>
-            <Cim exchange={base} coins={coins} tickers={tickers[base.id]} currency={currency} resetKey={resetKey} />
+          <PriceTable coins={coins} base={base} onBase={setBaseId} mode={mode} onMode={setMode} currency={currency} tickers={tickers} images={images} />
+
+          <MacroStrip active={chartSymbol} onPick={s => { setChartSymbol(s); setChartOpen(true); }} />
+
+          {/* CIM과 가격 차트 (넓은 화면에서 나란히, 차트를 접으면 CIM이 넓어진다) */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', lg: chartOpen ? 'repeat(2, minmax(0,1fr))' : 'minmax(0,1fr) auto' }, gap: 2.5, alignItems: 'stretch' }}>
+            <Box sx={{ minWidth: 0, display: 'flex' }}>
+              <CimCard exchange={base} coins={coins} tickers={tickers} currency={currency} resetKey={resetKey} />
+            </Box>
+            <PriceChart symbol={chartSymbol} onSymbol={setChartSymbol} open={chartOpen} onToggle={() => setChartOpen(o => !o)}
+              coins={coins.map(c => ({ symbol: c, onBinance: !tickers.binance || !!tickers.binance.data[c] }))} />
           </Box>
-        </>
+
+          <SummaryCards coins={coins} base={base} currency={currency} tickers={tickers} chartSymbol={chartSymbol}
+            onChart={c => { setChartSymbol(c); setChartOpen(true); }} open={sumOpen} onToggle={() => setSumOpen(o => !o)} />
+        </Stack>
       )}
     </Box>
   );

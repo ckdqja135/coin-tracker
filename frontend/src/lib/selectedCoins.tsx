@@ -12,7 +12,7 @@ interface SelectedCoinsValue {
   setActive: (coin: string) => void;
 }
 
-const MAX_COINS = 10;
+export const MAX_COINS = 10;
 const Ctx = createContext<SelectedCoinsValue | null>(null);
 
 /** 항상 선택되어 있는 코인 (지울 수 없다) */

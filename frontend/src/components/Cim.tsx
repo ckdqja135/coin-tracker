@@ -24,6 +24,12 @@ interface Props {
   currency: 'USD' | 'KRW';
   /** 값이 바뀌면 오늘 데이터를 다시 불러온다 (새로고침 버튼) */
   resetKey: number;
+  /** rel: 알트코인을 BTC 대비로 / abs: 모든 코인을 자기 09:00 시가 대비로 */
+  mode?: 'rel' | 'abs';
+  /** 차트 높이 (크게 보기에서 키운다) */
+  height?: number;
+  /** 바깥 카드가 제목을 그리면 테두리·제목 없이 차트만 */
+  bare?: boolean;
 }
 
 /** 코인별 기록: base = 09:00 시가, points = 1분 단위 [시각, 등락률%] */
@@ -34,7 +40,7 @@ type Series = { base: number; points: [number, number][] };
  * 기준 거래소에서 한국시간 09:00 시가 대비 선택 코인들의 등락률을 1분 단위로 겹쳐 그린다.
  * 과거는 실제 1분봉(1분마다 다시 받음), 진행 중인 1분은 실시간 시세, 미래 구간은 현재 값으로 평평한 점선. 매일 09:00에 초기화된다.
  */
-const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) => {
+const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey, mode = 'rel', height = 520, bare }) => {
   const theme = useTheme();
   const { lang, t } = useI18n();
   const history = useRef<Map<string, Series>>(new Map());
@@ -151,7 +157,10 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     // 같은 시각의 BTC 등락률로 나눠 BTC 대비 상대 등락률을 구한다
     const refPts = history.current.get(REF)?.points ?? [];
     const refAt = new Map(refPts.map(([t, v]) => [t, v]));
+    const rel = mode === 'rel';
     const displayPoints = (c: string): [number, number][] => {
+      // 절대 변동: 각자 09:00 시가 대비 등락률 그대로
+      if (!rel) return history.current.get(c)?.points ?? [];
       if (c === REF) return refPts.map(([t]) => [t, 0]); // BTC = 기준선 (현재까지만)
       if (!refPts.length) return []; // BTC 기록이 없으면 상대값을 구할 수 없다
       const pts = history.current.get(c)?.points ?? [];
@@ -172,7 +181,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
       const pts = shown.get(c) ?? [];
       const raw = history.current.get(c)?.points ?? [];
       // 범례 %: BTC는 자신의 09:00 대비 등락률, 알트는 BTC 대비 상대 등락률
-      const lastPct = c === REF ? raw[raw.length - 1]?.[1] : pts[pts.length - 1]?.[1];
+      const lastPct = c === REF || !rel ? raw[raw.length - 1]?.[1] : pts[pts.length - 1]?.[1];
       const price = tickers?.data[c]?.price;
       const color = COLORS[i % COLORS.length];
       return {
@@ -185,7 +194,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         // BTC는 미래 점선이 없으므로 선 끝(현재 시점)에 바로 라벨을 단다
         data: pts.map(([x, y], idx) => {
           const last = idx === pts.length - 1;
-          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: last && c === REF } };
+          return { x, y, marker: { enabled: last, radius: 4 }, dataLabels: { enabled: last && c === REF && rel } };
         }),
         dataLabels: {
           enabled: false,
@@ -201,13 +210,13 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
           padding: 2,
           style: { color: '#fff', fontSize: '10px', fontWeight: '700', textOutline: 'none' },
         },
-        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-', isRef: c === REF, isNew: fresh.get(c) ? newText(fresh.get(c)!) : null },
+        custom: { pct: lastPct, price: price != null ? fmt(toDisplay(price)) : '-', isRef: c === REF && rel, isNew: fresh.get(c) ? newText(fresh.get(c)!) : null },
       };
     });
 
     // 미래 구간: 현재 값에서 차트 오른쪽 끝까지 점선으로 평평하게 잇고, 끝에 마켓 이름 라벨을 단다
     const future: Highcharts.SeriesLineOptions[] = coins.flatMap((c, i) => {
-      if (c === REF) return []; // BTC 기준선은 현재 시각까지만 긋는다
+      if (c === REF && rel) return []; // BTC 기준선은 현재 시각까지만 긋는다
       const pts = shown.get(c) ?? [];
       const last = pts[pts.length - 1];
       if (!last || last[0] >= xMax) return [];
@@ -247,7 +256,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
 
     return {
       chart: {
-        backgroundColor: 'transparent', height: 520, animation: false, spacing: [10, 70, 10, 10], style: { fontFamily: 'inherit' },
+        backgroundColor: 'transparent', height, animation: false, spacing: [10, 70, 10, 10], style: { fontFamily: 'inherit' },
         events: {
           // 등락률이 비슷하면 선 끝 라벨이 겹쳐 하나가 가려지므로, 위에서부터 차례로 겹치지 않게 아래로 민다
           render(this: Highcharts.Chart) {
@@ -334,7 +343,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         gridLineColor: grid,
         // 09:00 시가(0%) 기준선. 코인 선과 헷갈리지 않게 옅은 회색 점선으로 그린다
         // BTC를 선택하지 않았을 때만 0%(BTC 기준) 점선을 그린다. 선택했으면 BTC 선이 기준선이다
-        plotLines: coins.includes(REF) ? [] : [{ value: 0, color: theme.palette.mode === 'dark' ? '#5b6070' : '#c4cad3', width: 1, dashStyle: 'Dash', zIndex: 1 }],
+        plotLines: rel && coins.includes(REF) ? [] : [{ value: 0, color: theme.palette.mode === 'dark' ? '#5b6070' : '#c4cad3', width: 1, dashStyle: 'Dash', zIndex: 1 }],
       },
       tooltip: {
         shared: true,
@@ -343,7 +352,7 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
         // 알트코인: BTC 대비 값을 +초록/-빨강으로. BTC: 차트에선 0% 기준선이므로 그 시각 BTC 자신의 등락률을 회색으로
         useHTML: true,
         pointFormatter(this: any) {
-          const isRef = this.series.options.id === REF;
+          const isRef = rel && this.series.options.id === REF;
           const v: number | undefined = isRef ? refAt.get(this.x) : this.y;
           if (v == null) return '';
           const color = isRef ? text : v > 0 ? UP : v < 0 ? DOWN : text;
@@ -369,8 +378,16 @@ const Cim: React.FC<Props> = ({ exchange, coins, tickers, currency, resetKey }) 
     };
     // version이 기록 변경을 나타낸다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, selKey, currency, theme.palette.mode, exchange.id, dayStart, lang, newKey]);
+  }, [version, selKey, currency, theme.palette.mode, exchange.id, dayStart, lang, newKey, mode, height]);
 
+  if (bare) {
+    return (
+      <Box sx={{ position: 'relative' }}>
+        {loading && <CircularProgress size={14} sx={{ position: 'absolute', top: 4, right: 8 }} />}
+        <HighchartsReact highcharts={Highcharts} options={options} />
+      </Box>
+    );
+  }
   return (
     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5, position: 'relative' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
