@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Button, IconButton, InputBase, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, InputBase, Paper, Stack, Typography, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { TKey, useI18n } from '../i18n';
 import { storage } from '../lib/chartUtils';
 import { fabSx, panelSx, useFloating } from '../lib/floating';
@@ -10,6 +11,17 @@ const MAX_KEEP = 100;
 // 창이 열려 있을 때 / 닫혀 있을 때(새 메시지 수만 셈) 새 메시지를 받아 오는 간격
 const POLL_OPEN_MS = 2_500;
 const POLL_CLOSED_MS = 15_000;
+// 채팅 창 크기 (왼쪽 위 모서리·왼쪽·위쪽 가장자리를 끌어 조절, 브라우저에 기억)
+const DEFAULT_SIZE = { w: 400, h: 440 };
+const MIN_SIZE = { w: 300, h: 300 };
+const MAX_W = 800;
+type Size = { w: number; h: number };
+type Edge = 'corner' | 'left' | 'top';
+const clampSize = ({ w, h }: Size): Size => ({
+  // 창은 오른쪽 아래에 붙어 있으므로 화면 왼쪽·위쪽 여백 안에서만 커진다
+  w: Math.round(Math.min(Math.max(w, MIN_SIZE.w), MAX_W, window.innerWidth - 56)),
+  h: Math.round(Math.min(Math.max(h, MIN_SIZE.h), window.innerHeight - 120)),
+});
 const randomNick = () => `anon${Math.floor(1000 + Math.random() * 9000)}`;
 const randomId = () => Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
 
@@ -96,12 +108,71 @@ const ChatWidget: React.FC = () => {
     poll();
   };
 
+  // 크기 조절: 휴대폰 폭에서는 화면 폭을 꽉 채우므로 끄고, 그 외에는 끌어서 바꾼다
+  const theme = useTheme();
+  const resizable = useMediaQuery(theme.breakpoints.up('sm'));
+  const [size, setSize] = useState<Size>(() => storage.get('chatSize', DEFAULT_SIZE));
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
+  const startResize = (edge: Edge) => (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const start = { x: e.clientX, y: e.clientY, ...sizeRef.current };
+    // 화면 갱신 전에 손을 떼도 마지막 크기를 저장하도록 따로 들고 있는다
+    let latest = sizeRef.current;
+    const move = (ev: PointerEvent) => {
+      latest = clampSize({
+        w: edge === 'top' ? start.w : start.w + (start.x - ev.clientX),
+        h: edge === 'left' ? start.h : start.h + (start.y - ev.clientY),
+      });
+      setSize(latest);
+    };
+    const end = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', end);
+      el.removeEventListener('pointercancel', end);
+      storage.set('chatSize', latest);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  };
+  // 모서리를 두 번 누르면 기본 크기로
+  const resetSize = () => { setSize(DEFAULT_SIZE); storage.set('chatSize', DEFAULT_SIZE); };
+  const handleSx = (edge: Edge) => ({
+    position: 'absolute', zIndex: 2, touchAction: 'none',
+    ...(edge === 'corner' ? { left: 0, top: 0, width: 18, height: 18, cursor: 'nwse-resize' }
+      : edge === 'left' ? { left: 0, top: 18, bottom: 0, width: 6, cursor: 'ew-resize' }
+        : { top: 0, left: 18, right: 0, height: 6, cursor: 'ns-resize' }),
+  } as const);
+
   const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
     <>
       {open && (
-        <Paper elevation={0} sx={{ ...panelSx, height: 440 }}>
+        <Paper elevation={0} sx={{
+          ...panelSx,
+          ...(resizable
+            ? { width: size.w, height: size.h, maxWidth: 'calc(100vw - 56px)' }
+            : { height: 440 }),
+        }}>
+          {resizable && (
+            <>
+              <Box onPointerDown={startResize('top')} sx={handleSx('top')} />
+              <Box onPointerDown={startResize('left')} sx={handleSx('left')} />
+              <Box onPointerDown={startResize('corner')} onDoubleClick={resetSize} title={t('chat.resize')} sx={{
+                ...handleSx('corner'),
+                // 모서리 표시: 대각선 두 줄
+                '&::before': {
+                  content: '""', position: 'absolute', left: 4, top: 4, width: 8, height: 8,
+                  borderLeft: 2, borderTop: 2, borderColor: 'text.disabled', borderTopLeftRadius: 4, opacity: 0.7,
+                },
+                '&:hover::before': { borderColor: 'primary.main', opacity: 1 },
+              }} />
+            </>
+          )}
           <Stack direction="row" alignItems="center" gap={1} sx={{ px: 1.5, py: 1, borderBottom: 1, borderColor: 'divider' }}>
             <Typography sx={{ fontWeight: 800, fontSize: 14 }}>{t('chat.title')}</Typography>
             <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: connected ? '#26a69a' : 'text.disabled' }} />
