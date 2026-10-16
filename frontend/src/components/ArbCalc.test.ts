@@ -1,5 +1,8 @@
 import { calcArb } from './ArbCalc';
 
+// axios(ESM)를 불러오지 않도록 API 모듈은 비운다
+jest.mock('../services/market', () => ({ fetchNotices: jest.fn(), fetchWallet: jest.fn() }));
+
 const base = { amount: 1_000_000, buyUsd: true, sellUsd: false, fx: 1000, buyFee: 0, sellFee: 0, withdrawFee: 0 };
 
 describe('calcArb', () => {

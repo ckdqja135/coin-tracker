@@ -114,3 +114,11 @@ export interface Notice {
 }
 
 export const fetchNotices = async (): Promise<Notice[]> => (await client.get('/notices')).data;
+
+/** 입출금 상태: 공개 API가 있는 거래소만 (업비트·바이낸스는 없음) */
+export type WalletExchange = 'bithumb' | 'coinone' | 'korbit' | 'gateio';
+export interface WalletStatus { deposit: boolean; withdraw: boolean }
+export type WalletData = Partial<Record<WalletExchange, Record<string, WalletStatus>>>;
+
+export const fetchWallet = async (coins: string[]): Promise<WalletData> =>
+  (await client.get('/wallet', { params: { coins: coins.join(',') } })).data;

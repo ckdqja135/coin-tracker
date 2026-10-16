@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Box, ButtonBase, InputBase, Stack, Typography } from '@mui/material';
 import { useI18n } from '../i18n';
 import { EXCHANGES, exchangeMeta } from '../lib/exchanges';
+import { useNotices } from '../lib/newListings';
+import { walletStatusOf } from '../lib/summary';
+import { useWallet } from '../lib/wallet';
 import { DOWN, UP } from '../lib/vsRef';
 import { Field, Select, inputBorder } from './toolsUi';
 import { ExchangeTickers, TickerExchange } from '../services/market';
@@ -62,6 +65,23 @@ const ArbCalc: React.FC<{ coins: string[]; tickers: Partial<Record<TickerExchang
     buyFee: num(buyFee) || 0, sellFee: num(sellFee) || 0, withdrawFee: num(withdrawFee) || 0,
   }) : null;
 
+  // 송금 가능 여부: 산 곳에서 출금, 판 곳으로 입금이 돼야 한다.
+  // 상태 API가 없는 업비트는 입출금 중단 공지로, 바이낸스는 알 수 없음으로 둔다
+  const wallet = useWallet(c ? [c] : []);
+  const notices = useNotices();
+  const now = Date.now();
+  const blocked: string[] = [];
+  const unknown: string[] = [];
+  if (c) {
+    const check = (ex: TickerExchange, need: 'deposit' | 'withdraw') => {
+      const w = walletStatusOf(wallet, notices, ex, c, now);
+      if (w) { if (!w[need]) blocked.push(`${exchangeMeta(ex).label} ${t(need === 'deposit' ? 'wallet.deposit' : 'wallet.withdraw')}`); return; }
+      if (ex === 'upbit' || ex === 'binance') unknown.push(exchangeMeta(ex).label);
+    };
+    check(buyEx, 'withdraw');
+    if (sellEx !== buyEx) check(sellEx, 'deposit');
+  }
+
   const exOptions = EXCHANGES.map(e => ({ value: e.id, label: e.label }));
   const pickBuy = (v: TickerExchange) => { setBuyEx(v); setBuyFee(String(DEFAULT_FEE[v])); };
   const pickSell = (v: TickerExchange) => { setSellEx(v); setSellFee(String(DEFAULT_FEE[v])); };
@@ -121,6 +141,16 @@ const ArbCalc: React.FC<{ coins: string[]; tickers: Partial<Record<TickerExchang
           {feeInput(t('arb.sellFee'), sellFee, setSellFee)}
           {feeInput(t('arb.withdrawShort', { coin: c ?? '' }), withdrawFee, setWithdrawFee)}
         </Box>
+      )}
+
+      {/* 입출금 상태 */}
+      {blocked.length > 0 && (
+        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: DOWN, border: 1, borderColor: DOWN, borderRadius: '10px', px: 1.5, py: 1 }}>
+          {t('arb.walletBlocked', { what: blocked.join(', ') })}
+        </Typography>
+      )}
+      {blocked.length === 0 && unknown.length > 0 && (
+        <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{t('arb.walletUnknown', { ex: unknown.join(' · ') })}</Typography>
       )}
 
       {/* 결과 */}

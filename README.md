@@ -105,6 +105,7 @@ When the frontend is deployed separately (e.g. Vercel), set its root directory t
 | `GET /api/market/flow` | Server-aggregated taker buy/sell totals per period + recent large trades (`coin`) |
 | `GET /api/market/overview` | Index strip (S&P 500, US 100, dollar index, crypto market cap, BTC dominance) |
 | `GET /api/market/coininfo`, `/coins`, `/snapshot`, `/metric`, `/premium` | Coin summary, search list, summary indicators, futures metrics, kimchi premium |
+| `GET /api/market/wallet` | Deposit/withdrawal status on Bithumb, Coinone, Korbit, Gate.io (`coins`). Upbit and Binance have no public API |
 
 ## (Optional) DB history API
 

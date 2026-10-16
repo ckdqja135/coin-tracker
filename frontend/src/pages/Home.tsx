@@ -13,7 +13,9 @@ import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
 import { storage } from '../lib/chartUtils';
-import { NewBadge, useNewListings } from '../lib/newListings';
+import { NewBadge, useNewListings, useNotices } from '../lib/newListings';
+import { walletStatusOf } from '../lib/summary';
+import { useWallet } from '../lib/wallet';
 import { PINNED_COIN, useSelectedCoins } from '../lib/selectedCoins';
 import { useAsync } from '../lib/useAsync';
 import { useSharedTickers } from '../lib/sharedTickers';
@@ -150,6 +152,8 @@ const CompareTable: React.FC<{
 }> = ({ coins, base, mode, currency, tickers, images }) => {
   const { t } = useI18n();
   const fresh = useNewListings();
+  const wallet = useWallet(coins);
+  const notices = useNotices();
   const hl = 'ui.highlight.bg';
   const hlFg = 'ui.highlight.fg';
   const fx = Object.values(tickers).find(x => x?.usdKrw)?.usdKrw ?? null;
@@ -168,6 +172,15 @@ const CompareTable: React.FC<{
     if (c == null || b == null) return undefined;
     const rel = relVsRef(c, b);
     return rel > 0 ? UP : rel < 0 ? DOWN : undefined;
+  };
+
+  // 입출금이 막힌 거래소는 가격 아래에 빨갛게 표시한다 (업비트는 공지 기준, 바이낸스는 알 수 없음)
+  const now = Date.now();
+  const walletTag = (ex: ExchangeMeta, coin: string) => {
+    const w = walletStatusOf(wallet, notices, ex.id, coin, now);
+    if (!w || (w.deposit && w.withdraw)) return null;
+    const key = !w.deposit && !w.withdraw ? 'wallet.both' : !w.deposit ? 'wallet.deposit' : 'wallet.withdraw';
+    return <Box sx={{ fontSize: 10, fontWeight: 800, color: DOWN, mt: 0.25 }}>{t(key)}</Box>;
   };
 
   return (
@@ -214,6 +227,7 @@ const CompareTable: React.FC<{
                       <TableCell key={ex.id} align="center" sx={cellSx}>
                         {mode === 'listing' && <Box sx={{ color: '#3ecf3e', fontSize: 18, lineHeight: 1 }}>✔</Box>}
                         <Box component="span" sx={{ color: vsBtcColor(ex, coin) }}>{fmtMoney(price, currency)}</Box>
+                        {walletTag(ex, coin)}
                       </TableCell>
                     );
                   }
@@ -225,6 +239,7 @@ const CompareTable: React.FC<{
                         {diff == null ? '-' : `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%`}
                       </Box>
                       {fmtMoney(price, currency)}
+                      {walletTag(ex, coin)}
                     </TableCell>
                   );
                 })}

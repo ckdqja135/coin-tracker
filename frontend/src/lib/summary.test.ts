@@ -1,4 +1,4 @@
-import { summarizeCoin, summarizeMarket } from './summary';
+import { summarizeCoin, summarizeMarket, walletStatusOf } from './summary';
 import type { ExchangeTickers, Notice, Ticker, TickerExchange } from '../services/market';
 
 const DAY = 86_400_000;
@@ -53,5 +53,39 @@ describe('summarizeMarket', () => {
     expect(m).toMatchObject({ btc: 1, up: 2, down: 1, listings: ['NEW1'], warnings: [], delistings: ['GONE'] });
     expect(m.gainers.map(g => g.coin)).toEqual(['A', 'BTC']);
     expect(m.losers.map(g => g.coin)).toEqual(['B']);
+  });
+});
+
+describe('입출금 상태', () => {
+  const tickers = {
+    bithumb: ex('bithumb', { XYZ: tk(1000) }),
+    coinone: ex('coinone', { XYZ: tk(1000) }),
+    korbit: ex('korbit', {}),
+  };
+  const wallet = {
+    bithumb: { XYZ: { deposit: false, withdraw: false } },
+    coinone: { XYZ: { deposit: true, withdraw: false } },
+    // 코빗은 이 코인을 거래하지 않으므로 상태가 있어도 무시한다
+    korbit: { XYZ: { deposit: false, withdraw: false } },
+  };
+
+  it('거래하는 거래소의 입출금 중단을 종류별로 묶는다', () => {
+    const facts = summarizeCoin({ coin: 'XYZ', base: 'bithumb', tickers, notices: [], wallet, now });
+    expect(facts.filter(f => f.key.startsWith('sum.wallet')).map(f => [f.key, f.vars?.ex]))
+      .toEqual([['sum.walletBoth', 'Bithumb'], ['sum.walletWithdraw', 'Coinone']]);
+  });
+
+  it('업비트는 재개·완료되지 않은 중단 공지로 판단한다', () => {
+    const notices = [
+      n({ kind: 'other', coins: ['A'], title: '에이(A) 출금 일시 중단 안내 (10/19 20:00 ~)' }),
+      n({ kind: 'other', coins: ['B'], title: '비(B) 입출금 일시 중단 안내', time: now - 3 * DAY }),
+      n({ kind: 'other', coins: ['B'], title: '비(B) 입출금 재개 안내', time: now - DAY }),
+      n({ kind: 'other', coins: ['C'], title: '씨(C) 입출금 일시 중단 안내 (완료)' }),
+    ];
+    expect(walletStatusOf(undefined, notices, 'upbit', 'A', now)).toEqual({ deposit: true, withdraw: false });
+    expect(walletStatusOf(undefined, notices, 'upbit', 'B', now)).toBeUndefined();
+    expect(walletStatusOf(undefined, notices, 'upbit', 'C', now)).toBeUndefined();
+    // 상태 API가 없는 바이낸스는 알 수 없음
+    expect(walletStatusOf(undefined, notices, 'binance', 'A', now)).toBeUndefined();
   });
 });

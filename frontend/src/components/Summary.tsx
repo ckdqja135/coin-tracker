@@ -4,6 +4,7 @@ import { TKey, useI18n } from '../i18n';
 import { NEW_COLOR, useNotices } from '../lib/newListings';
 import { Fact, Mover, Tone, signed, summarizeCoin, summarizeMarket } from '../lib/summary';
 import { useAsync } from '../lib/useAsync';
+import { useWallet } from '../lib/wallet';
 import { DOWN, UP } from '../lib/vsRef';
 import { ExchangeTickers, TickerExchange, fetchTickers } from '../services/market';
 
@@ -33,6 +34,7 @@ export const CoinSummary: React.FC<{
 }> = ({ coins, base, tickers, images }) => {
   const { t } = useI18n();
   const notices = useNotices();
+  const wallet = useWallet(coins);
   return (
     <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, px: 2, py: 1.5 }}>
       <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -40,7 +42,7 @@ export const CoinSummary: React.FC<{
         <Help title={t('sum.help')} />
       </Stack>
       {coins.map(coin => {
-        const facts = summarizeCoin({ coin, base, tickers, notices });
+        const facts = summarizeCoin({ coin, base, tickers, notices, wallet });
         return (
           <Stack key={coin} direction="row" alignItems="flex-start" gap={1.25}
             sx={{ py: 0.75, borderTop: 1, borderColor: 'divider', '&:first-of-type': { borderTop: 0 } }}>

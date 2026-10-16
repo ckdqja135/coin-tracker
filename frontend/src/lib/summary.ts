@@ -1,4 +1,4 @@
-import type { ExchangeTickers, Notice, NoticeExchange, TickerExchange } from '../services/market';
+import type { ExchangeTickers, Notice, NoticeExchange, TickerExchange, WalletData, WalletStatus } from '../services/market';
 import { EXCHANGES, exchangeMeta } from './exchanges';
 import { REF, relVsRef } from './vsRef';
 
@@ -35,6 +35,24 @@ const dateOf = (t: number) => {
 
 type Tickers = Partial<Record<TickerExchange, ExchangeTickers>>;
 
+/** 거래소·코인의 입출금 상태 (공개 API가 없는 거래소이거나 모르면 undefined) */
+export const walletOf = (wallet: WalletData | undefined, ex: TickerExchange, coin: string): WalletStatus | undefined =>
+  (wallet as Partial<Record<TickerExchange, Record<string, WalletStatus>>> | undefined)?.[ex]?.[coin];
+
+/** 입출금 중단 공지가 이만큼 지나면 요약에서 뺀다 */
+export const SUSPEND_FOR_MS = 14 * DAY;
+const SUSPEND = /(입출금|입금|출금)[^]*(중단|중지)/;
+const RESUMED = /재개|완료|정상화/;
+
+/**
+ * 업비트처럼 입출금 상태 API가 없는 거래소는 공지로 판단한다:
+ * "입출금 일시 중단 안내" 공지 중 완료·재개 표시가 없고, 이후 같은 거래소에 재개·완료 공지가 없는 것
+ */
+export const activeSuspensions = (notices: Notice[], coin: string, exchange: NoticeExchange, now: number) =>
+  notices.filter(n => n.exchange === exchange && n.coins.includes(coin) && now - n.time < SUSPEND_FOR_MS
+    && SUSPEND.test(n.title) && !RESUMED.test(n.title)
+    && !notices.some(m => m.exchange === exchange && m.coins.includes(coin) && m.time > n.time && RESUMED.test(m.title)));
+
 /** 거래소별로 묶은 공지 사실 (같은 내용이 두 거래소에 있으면 한 줄로) */
 const noticeFact = (list: Notice[], key: string, tone: Tone, strong: boolean, extra?: Record<string, string>): Fact | null => {
   if (!list.length) return null;
@@ -48,17 +66,35 @@ const activeWarnings = (notices: Notice[], coin: string, now: number) =>
   notices.filter(n => n.kind === 'warning' && n.coins.includes(coin) && now - n.time < RISK_FOR_MS
     && !notices.some(m => m.exchange === n.exchange && m.coins.includes(coin) && m.time > n.time && /해제/.test(m.title)));
 
+/**
+ * 입출금 상태: 상태 API가 있으면 그 값, 업비트는 진행 중인 중단 공지 제목으로 추정한다
+ * ("입출금" → 둘 다, "출금"만 → 출금, "입금"만 → 입금). 알 수 없으면 undefined
+ */
+export const walletStatusOf = (wallet: WalletData | undefined, notices: Notice[], ex: TickerExchange, coin: string, now: number): WalletStatus | undefined => {
+  const w = walletOf(wallet, ex, coin);
+  if (w || ex !== 'upbit') return w;
+  const active = activeSuspensions(notices, coin, 'upbit', now);
+  if (!active.length) return undefined;
+  const both = active.some(n => /입출금/.test(n.title));
+  return {
+    deposit: !(both || active.some(n => /입금/.test(n.title))),
+    withdraw: !(both || active.some(n => /출금/.test(n.title))),
+  };
+};
+
 export interface CoinSummaryInput {
   coin: string;
   /** 등락률·BTC 대비를 볼 기준 거래소 */
   base: TickerExchange;
   tickers: Tickers;
   notices: Notice[];
+  /** 거래소별 입출금 상태 */
+  wallet?: WalletData;
   now?: number;
 }
 
 /** 코인 하나의 요약 사실 (중요한 순서) */
-export const summarizeCoin = ({ coin, base, tickers, notices, now = Date.now() }: CoinSummaryInput): Fact[] => {
+export const summarizeCoin = ({ coin, base, tickers, notices, wallet, now = Date.now() }: CoinSummaryInput): Fact[] => {
   const facts: Fact[] = [];
   const push = (f: Fact | null) => { if (f) facts.push(f); };
   const mine = notices.filter(n => n.coins.includes(coin));
@@ -66,6 +102,20 @@ export const summarizeCoin = ({ coin, base, tickers, notices, now = Date.now() }
   // 1. 공지: 거래지원 종료 > 유의 종목 > 신규 상장
   push(noticeFact(mine.filter(n => n.kind === 'delisting' && now - n.time < RISK_FOR_MS), 'sum.delisting', 'down', true));
   push(noticeFact(activeWarnings(notices, coin, now), 'sum.warning', 'warn', true));
+
+  // 입출금 중단: 상태 API가 있는 거래소는 실제 상태로, 업비트는 공지로. 그 코인을 거래하는 거래소만 본다
+  const blocked = { both: [] as string[], deposit: [] as string[], withdraw: [] as string[] };
+  (['bithumb', 'coinone', 'korbit', 'gateio'] as TickerExchange[]).forEach(e => {
+    const w = walletOf(wallet, e, coin);
+    if (!w || !tickers[e]?.data[coin]) return;
+    if (!w.deposit && !w.withdraw) blocked.both.push(exLabel(e));
+    else if (!w.deposit) blocked.deposit.push(exLabel(e));
+    else if (!w.withdraw) blocked.withdraw.push(exLabel(e));
+  });
+  if (blocked.both.length) push({ key: 'sum.walletBoth', tone: 'down', strong: true, vars: { ex: blocked.both.join(' · ') } });
+  if (blocked.deposit.length) push({ key: 'sum.walletDeposit', tone: 'down', strong: true, vars: { ex: blocked.deposit.join(' · ') } });
+  if (blocked.withdraw.length) push({ key: 'sum.walletWithdraw', tone: 'down', strong: true, vars: { ex: blocked.withdraw.join(' · ') } });
+  push(noticeFact(activeSuspensions(notices, coin, 'upbit', now), 'sum.walletNotice', 'down', true));
   const listings = mine.filter(n => n.kind === 'listing' && now - n.time < NEW_FOR_MS);
   if (listings.length) {
     const first = Math.min(...listings.map(n => n.time));

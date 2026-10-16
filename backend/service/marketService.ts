@@ -752,6 +752,70 @@ export const getNotices = async (): Promise<Notice[]> => {
 };
 
 // ---------------------------------------------------------------------------
+// 입출금 상태: 키 없이 공개된 거래소만 (빗썸·코인원·코빗·게이트). 업비트·바이낸스는 공개 API가 없다
+// ---------------------------------------------------------------------------
+export type WalletExchange = 'bithumb' | 'coinone' | 'korbit' | 'gateio';
+export const WALLET_EXCHANGES: WalletExchange[] = ['bithumb', 'coinone', 'korbit', 'gateio'];
+/** 입금 / 출금 가능 여부 */
+export interface WalletStatus { deposit: boolean; withdraw: boolean }
+type WalletMap = Record<string, WalletStatus>;
+
+const loadWallet = async (exchange: WalletExchange): Promise<WalletMap> => {
+    const map: WalletMap = {};
+    switch (exchange) {
+        case 'bithumb': {
+            const { data } = await http.get('https://api.bithumb.com/public/assetsstatus/ALL');
+            Object.entries<any>(data?.data ?? {}).forEach(([c, v]) => {
+                map[c] = { deposit: v.deposit_status === 1, withdraw: v.withdrawal_status === 1 };
+            });
+            break;
+        }
+        case 'coinone': {
+            const { data } = await http.get('https://api.coinone.co.kr/public/v2/currencies');
+            (data?.currencies ?? []).forEach((c: any) => {
+                map[String(c.symbol).toUpperCase()] = { deposit: c.deposit_status === 'normal', withdraw: c.withdraw_status === 'normal' };
+            });
+            break;
+        }
+        case 'korbit': {
+            const { data } = await http.get('https://api.korbit.co.kr/v2/currencies');
+            (data?.data ?? []).forEach((c: any) => {
+                map[String(c.name).toUpperCase()] = { deposit: c.depositStatus === 'launched', withdraw: c.withdrawalStatus === 'launched' };
+            });
+            break;
+        }
+        case 'gateio': {
+            const { data } = await http.get('https://api.gateio.ws/api/v4/spot/currencies');
+            (Array.isArray(data) ? data : []).forEach((c: any) => {
+                // "USDT_ETH"처럼 체인이 붙은 항목은 건너뛴다. 체인이 여러 개면 하나라도 열려 있으면 가능으로 본다
+                if (String(c.currency).includes('_') || c.delisted) return;
+                const chains: any[] = Array.isArray(c.chains) && c.chains.length ? c.chains : [c];
+                map[String(c.currency).toUpperCase()] = {
+                    deposit: chains.some(ch => !ch.deposit_disabled),
+                    withdraw: chains.some(ch => !ch.withdraw_disabled),
+                };
+            });
+            break;
+        }
+    }
+    return map;
+};
+
+const getWallet = (exchange: WalletExchange) => cached(`wallet:${exchange}`, 120_000, () => loadWallet(exchange));
+
+/** 코인별 거래소 입출금 상태 (실패한 거래소는 빠진다). coins를 주면 그 코인만 */
+export const getWalletStatus = async (coins: string[]): Promise<Partial<Record<WalletExchange, WalletMap>>> => {
+    const results = await Promise.all(WALLET_EXCHANGES.map(e => safe(getWallet(e))));
+    const out: Partial<Record<WalletExchange, WalletMap>> = {};
+    WALLET_EXCHANGES.forEach((e, i) => {
+        const all = results[i];
+        if (!all) return;
+        out[e] = coins.length ? Object.fromEntries(coins.filter(c => all[c]).map(c => [c, all[c]])) : all;
+    });
+    return out;
+};
+
+// ---------------------------------------------------------------------------
 // 국내 지표: 원/달러 환율, 테더(USDT) 김프, 공포·탐욕 지수 (홈 상단 줄)
 // ---------------------------------------------------------------------------
 export interface KoreaIndicators {

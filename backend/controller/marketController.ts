@@ -13,6 +13,7 @@ import {
     getOverview,
     getKoreaIndicators,
     getNotices,
+    getWalletStatus,
     getCoinInfo,
     TICKER_EXCHANGES,
     TickerExchange,
@@ -253,5 +254,18 @@ export const notices = async (_req: Request, res: Response) => {
         res.json(await getNotices());
     } catch (err: any) {
         handleError(res, err, 'notices');
+    }
+};
+
+/**
+ * GET /api/market/wallet?coins=BTC,ETH
+ * 거래소별 입출금 가능 여부 (빗썸·코인원·코빗·게이트)
+ */
+export const wallet = async (req: Request, res: Response) => {
+    const coins = String(req.query.coins || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean).slice(0, 50);
+    try {
+        res.json(await getWalletStatus(coins));
+    } catch (err: any) {
+        handleError(res, err, 'wallet');
     }
 };
