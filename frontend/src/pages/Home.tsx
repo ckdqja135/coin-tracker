@@ -5,6 +5,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import Cim from '../components/Cim';
+import CoinIcon from '../components/CoinIcon';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
 import { LogoMark, Wordmark } from '../components/Logo';
@@ -209,7 +210,7 @@ const CompareTable: React.FC<{
               <TableRow key={coin}>
                 <TableCell sx={{ bgcolor: hl, color: hlFg, fontWeight: 700 }}>
                   <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" rowGap={0.5}>
-                    {images[coin] && <Box component="img" src={images[coin]!} alt="" sx={{ width: 18, height: 18 }} />}
+                    <CoinIcon symbol={coin} fallback={images[coin]} />
                     {coin}
                     {fresh.get(coin) && <NewBadge info={fresh.get(coin)!} withExchange />}
                   </Stack>
@@ -325,9 +326,9 @@ const Home: React.FC = () => {
     <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1}>
       {coins.length > 1 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
       {coins.map(c => (
-        <Chip key={c} label={c} onClick={() => { setActive(c); open(); }}
+        <Chip key={c} label={c} icon={<CoinIcon symbol={c} size={18} fallback={images[c]} />} onClick={() => { setActive(c); open(); }}
           onDelete={c === PINNED_COIN ? undefined : () => remove(c)}
-          sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
+          sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-icon': { ml: 0.75, mr: -0.25 }, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
       ))}
       {coins.length > 0 && (
         <Button size="small" onClick={() => { setResetKey(k => k + 1); open(); }} sx={{ color: 'text.secondary', fontWeight: 600 }}>

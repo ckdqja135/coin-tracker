@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import CoinIcon from './CoinIcon';
 import { TKey, useI18n } from '../i18n';
 import { NEW_COLOR, useNotices } from '../lib/newListings';
 import { Fact, Mover, Tone, signed, summarizeCoin, summarizeMarket } from '../lib/summary';
@@ -47,7 +48,7 @@ export const CoinSummary: React.FC<{
           <Stack key={coin} direction="row" alignItems="flex-start" gap={1.25}
             sx={{ py: 0.75, borderTop: 1, borderColor: 'divider', '&:first-of-type': { borderTop: 0 } }}>
             <Stack direction="row" alignItems="center" gap={0.75} sx={{ width: 84, flexShrink: 0, minHeight: 24 }}>
-              {images[coin] && <Box component="img" src={images[coin]!} alt="" sx={{ width: 16, height: 16 }} />}
+              <CoinIcon symbol={coin} size={16} fallback={images[coin]} />
               <Typography noWrap sx={{ fontSize: 13, fontWeight: 800 }}>{coin}</Typography>
             </Stack>
             {/* 줄이 넘치면 코인 이름 아래가 아니라 사실 목록끼리 이어서 접는다 */}
@@ -68,8 +69,9 @@ const loadUpbit = () => fetchTickers('upbit', []);
 const CoinLink: React.FC<{ coin: string; onPick: (c: string) => void; children?: React.ReactNode; color?: string }> = ({ coin, onPick, children, color }) => (
   <Box component="button" type="button" onClick={() => onPick(coin)} sx={{
     border: 0, bgcolor: 'transparent', p: 0, font: 'inherit', fontSize: 12.5, cursor: 'pointer', color: 'text.primary', fontWeight: 700,
-    '&:hover': { textDecoration: 'underline' },
+    display: 'inline-flex', alignItems: 'center', gap: 0.5, '&:hover': { textDecoration: 'underline' },
   }}>
+    <CoinIcon symbol={coin} size={14} />
     {coin}{children && <Box component="span" sx={{ color, ml: 0.5, fontWeight: 600 }}>{children}</Box>}
   </Box>
 );

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Autocomplete, Box, InputAdornment, TextField } from '@mui/material';
+import CoinIcon from './CoinIcon';
 import { useI18n } from '../i18n';
 import { NewBadge, useNewListings } from '../lib/newListings';
 import { useAsync } from '../lib/useAsync';
@@ -49,6 +50,7 @@ const CoinSearch: React.FC<Props> = ({ onSelect, size = 'small' }) => {
       noOptionsText={input ? t('search.empty') : t('search.coins')}
       renderOption={(props, c) => (
         <Box component="li" {...props} key={c.symbol} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CoinIcon symbol={c.symbol} size={20} />
           <b>{c.symbol}</b>
           <Box component="span" sx={{ color: 'text.secondary' }}>{lang === 'ko' && c.ko ? c.ko : c.en}</Box>
           {fresh.get(c.symbol) && <NewBadge info={fresh.get(c.symbol)!} withExchange />}
