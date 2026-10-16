@@ -8,6 +8,7 @@ import Cim from '../components/Cim';
 import CoinSearch from '../components/CoinSearch';
 import ExchangeBadge from '../components/ExchangeBadge';
 import { LogoMark, Wordmark } from '../components/Logo';
+import { CoinSummary, MarketSummary } from '../components/Summary';
 import TradingViewWidget from '../components/TradingViewWidget';
 import { useI18n } from '../i18n';
 import { EXCHANGES, ExchangeMeta, exchangeMeta } from '../lib/exchanges';
@@ -335,12 +336,17 @@ const Home: React.FC = () => {
             </Button>
           )}
         </Stack>
+        <MarketSummary onPick={pick} />
       </Stack>
 
       {opened && coins.length > 0 && chartCoin && (
         <>
           <Box ref={chartRef} sx={{ scrollMarginTop: 120 }}>
             <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} />
+          </Box>
+
+          <Box sx={{ mt: 6 }}>
+            <CoinSummary coins={coins} base={baseId} tickers={tickers} images={images} />
           </Box>
 
           {/* 거래소 비교 */}

@@ -2,11 +2,12 @@ import React from 'react';
 import { Box, Tooltip } from '@mui/material';
 import { useI18n } from '../i18n';
 import { exchangeMeta } from './exchanges';
+import { NEW_FOR_MS } from './summary';
 import { useAsync } from './useAsync';
 import { Notice, NoticeExchange, fetchNotices } from '../services/market';
 
-/** 상장 공지가 올라온 뒤 이 기간 동안 NEW로 표시한다 */
-export const NEW_FOR_MS = 7 * 86_400_000;
+/** 상장 공지가 올라온 뒤 NEW로 표시하는 기간 */
+export { NEW_FOR_MS };
 export const NEW_COLOR = '#f59e0b';
 
 /** 코인별 최근 상장 정보: 상장한 거래소와 가장 이른 공지 시각 */
@@ -40,7 +41,11 @@ const loadNotices = () => {
   return cache.p;
 };
 const EMPTY: NewListings = new Map();
+const NO_NOTICES: Notice[] = [];
 const loadNewListings = () => loadNotices().then(n => newListingsOf(n));
+
+/** 업비트·빗썸 공지 (화면들이 함께 쓰는 캐시, 실패하면 빈 목록) */
+export const useNotices = (): Notice[] => useAsync(loadNotices, [], TTL).data ?? NO_NOTICES;
 
 /** 최근 7일 안에 업비트·빗썸에 상장된 코인 (실패하면 빈 목록) */
 export const useNewListings = (): NewListings => useAsync(loadNewListings, [], TTL).data ?? EMPTY;
