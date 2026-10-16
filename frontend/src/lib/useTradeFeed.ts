@@ -196,7 +196,8 @@ export const useTradeFeed = (coin: string, minUsd: number, paused: boolean, onBi
    * 서버 집계가 있으면 그것을 쓰고(페이지를 연 시점과 무관), 없으면 브라우저가 모은 값으로 계산한다.
    */
   const volume = (ex: FeedExchange, windowKey: string, windowMs: number) => {
-    const fromServer = server?.windows[windowKey]?.[ex];
+    // 서버가 그 거래소에 연결돼 있지 않으면(since 없음) 서버 합계는 0이므로 브라우저 집계를 쓴다
+    const fromServer = server?.since[ex] ? server.windows[windowKey]?.[ex] : undefined;
     if (fromServer) return fromServer;
     const since = Date.now() - windowMs;
     let buy = 0;
