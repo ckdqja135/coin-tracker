@@ -53,12 +53,13 @@ const OverviewStrip: React.FC = () => {
           : isMcap ? `${(it.value / 1e12).toFixed(2)} T` : it.value.toLocaleString('en-US', { maximumFractionDigits: 3 });
         return (
           <Box key={it.id} sx={{ minWidth: 0 }}>
-            <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 11 }}>
-              <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{it.name}</Typography>
-              <Typography sx={{ fontSize: 11, ml: 1 }}>{value}</Typography>
+            {/* 이름이 길면 이름만 말줄임하고, 값은 한 줄로 유지한다 (예: "2.78 T"가 두 줄로 쪼개지지 않게) */}
+            <Stack direction="row" justifyContent="space-between" sx={{ fontSize: 11, minWidth: 0 }}>
+              <Typography noWrap title={it.name} sx={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', minWidth: 0 }}>{it.name}</Typography>
+              <Typography sx={{ fontSize: 11, ml: 1, flexShrink: 0, whiteSpace: 'nowrap' }}>{value}</Typography>
             </Stack>
             {it.changePct != null && (
-              <Typography sx={{ color: up ? UP : DOWN, fontWeight: 700, fontSize: 17 }}>
+              <Typography sx={{ color: up ? UP : DOWN, fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap' }}>
                 {up ? '▲' : '▼'} {Math.abs(it.changePct).toFixed(2)}%
                 <Box component="span" sx={{ fontSize: 11, ml: 0.5, fontWeight: 400 }}>
                   {it.change != null ? (isMcap ? `${(it.change / 1e9).toFixed(1)} B` : it.change.toFixed(2)) : ''}
