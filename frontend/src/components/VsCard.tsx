@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, IconButton, MenuItem, Select, Stack, Tooltip, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Highcharts from 'highcharts/highstock';
@@ -6,7 +6,8 @@ import HighchartsReact from 'highcharts-react-official';
 import { CardRange, CatalogItem, RANGE_MS, cardLimit, intervalsFor } from '../lib/catalog';
 import { useI18n } from '../i18n';
 import { useAsync } from '../lib/useAsync';
-import { fillRange } from '../lib/chartUtils';
+import { fillRange, storage } from '../lib/chartUtils';
+import { INDICATORS, IndicatorId, PANE_PX, indicatorSeries } from '../lib/indicators';
 import { Interval, Point } from '../services/market';
 
 const BASE_COLOR = '#6b6f76';
@@ -94,7 +95,25 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     return { b: fillRange(b, start, end), tg: fillRange(tg, start, end) };
   }, [base?.id, target.id, range, iv], 120_000);
 
-  const height = detail ? 440 : 160;
+  // 상세 화면 보조지표: 고른 지표와 계산 대상(비교 대상 / 기준)을 브라우저에 기억한다
+  const [indicators, setIndicators] = useState<IndicatorId[]>(() => storage.get('detailIndicators', []));
+  const [indOn, setIndOn] = useState<'target' | 'base'>(() => storage.get('detailIndicatorOn', 'target'));
+  const source = base && indOn === 'base' ? 'base' : 'target';
+  const toggleIndicator = (id: IndicatorId) => setIndicators(cur => {
+    const next = cur.includes(id) ? cur.filter(i => i !== id) : [...cur, id];
+    storage.set('detailIndicators', next);
+    return next;
+  });
+  const pickSource = (v: 'target' | 'base') => { setIndOn(v); storage.set('detailIndicatorOn', v); };
+  // 도구모음 접기/펼치기. 차트 폭이 바뀌므로 Highcharts에 크기를 다시 맞추게 한다
+  const [toolsOpen, setToolsOpen] = useState<boolean>(() => storage.get('detailToolsOpen', true));
+  const toggleTools = () => setToolsOpen(v => { storage.set('detailToolsOpen', !v); return !v; });
+  useEffect(() => { if (detail) window.dispatchEvent(new Event('resize')); }, [toolsOpen, detail]);
+  const ind = detail ? indicatorSeries(indicators, source, source === 'base' ? 0 : 1, 2) : { series: [], panes: [] };
+  const height = detail ? 440 + ind.panes.length * PANE_PX : 160;
+  // 지표 칸이 생기면 위쪽 가격 칸을 줄이고 그 아래에 칸을 하나씩 쌓는다 (%: 플롯 영역 기준)
+  const mainPct = ind.panes.length ? Math.round((320 / (320 + ind.panes.length * PANE_PX)) * 100) : 100;
+  const panePct = ind.panes.length ? (100 - mainPct) / ind.panes.length : 0;
   const baseColor = dark ? BASE_COLOR_DARK : BASE_COLOR;
   const axisLabels = (color: string, percent: boolean) => ({
     style: { color, fontSize: '10px' },
@@ -114,8 +133,15 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     },
     // 상세 화면에서는 두 값의 눈금을 양쪽에 보여 준다 (기준: 왼쪽 회색, 비교 대상: 오른쪽 파랑)
     yAxis: detail ? [
-      { visible: !!base, title: { text: undefined }, gridLineColor: dark ? '#2f333b' : '#eef0f4', labels: axisLabels(baseColor, base?.unit === 'percent') },
-      { visible: true, title: { text: undefined }, opposite: true, gridLineWidth: base ? 0 : 1, gridLineColor: dark ? '#2f333b' : '#eef0f4', labels: axisLabels(TARGET_COLOR, target.unit === 'percent') },
+      { visible: !!base, height: `${mainPct}%`, title: { text: undefined }, gridLineColor: dark ? '#2f333b' : '#eef0f4', labels: axisLabels(baseColor, base?.unit === 'percent') },
+      { visible: true, height: `${mainPct}%`, title: { text: undefined }, opposite: true, gridLineWidth: base ? 0 : 1, gridLineColor: dark ? '#2f333b' : '#eef0f4', labels: axisLabels(TARGET_COLOR, target.unit === 'percent') },
+      ...ind.panes.map((d, i) => ({
+        top: `${mainPct + i * panePct + 3}%`, height: `${panePct - 3}%`, offset: 0, opposite: true,
+        title: { text: d.label, style: { color: d.color, fontSize: '10px' } },
+        gridLineColor: dark ? '#2f333b' : '#eef0f4', labels: { style: { color: dark ? '#9aa1ad' : '#555', fontSize: '10px' } },
+        // RSI 과매수(70)·과매도(30) 기준선
+        ...(d.id === 'rsi' ? { min: 0, max: 100, tickPositions: [0, 30, 70, 100], plotLines: [30, 70].map(v => ({ value: v, color: dark ? '#4a4f59' : '#c4cad3', dashStyle: 'Dash' as const, width: 1 })) } : {}),
+      })),
     ] : [
       { visible: false, gridLineColor: dark ? '#2f333b' : '#eef0f4' },
       { visible: false, opposite: true },
@@ -123,11 +149,12 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     tooltip: { shared: true, xDateFormat: '%Y-%m-%d %H:%M', valueDecimals: 2, outside: true, ...(detail ? { crosshairs: true } : {}) },
     plotOptions: { series: { turboThreshold: 0, animation: false, lineWidth: 1.2, marker: { enabled: false }, states: { hover: { lineWidthPlus: 0 } } } },
     series: [
-      ...(base ? [{ type: 'line' as const, name: base.short, color: baseColor, yAxis: 0, data: markPoints(data?.b ?? [], false) }] : []),
-      { type: 'line' as const, name: target.short, color: TARGET_COLOR, yAxis: base || detail ? 1 : 0, data: markPoints(data?.tg ?? [], true) },
+      ...(base ? [{ type: 'line' as const, id: 'base', name: base.short, color: baseColor, yAxis: 0, data: markPoints(data?.b ?? [], false) }] : []),
+      { type: 'line' as const, id: 'target', name: target.short, color: TARGET_COLOR, yAxis: base || detail ? 1 : 0, data: markPoints(data?.tg ?? [], true) },
+      ...ind.series,
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [data, base, target.short, target.unit, range, chartBg, dark, detail]);
+  }), [data, base, target.short, target.unit, range, chartBg, dark, detail, indicators.join(','), source]);
 
   return (
     <Box sx={{
@@ -168,6 +195,69 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
           })}
         </Stack>
       )}
+      {detail ? (
+        // 상세 화면: 왼쪽 도구모음(보조지표 켜고 끄기·계산 대상) + 차트
+        <Stack direction={{ xs: 'column', md: 'row' }} gap={1.5} sx={{ mx: 2, mt: 1.5 }}>
+          <Box sx={{
+            width: { md: toolsOpen ? 168 : 36 }, flexShrink: 0, border: 1, borderColor: 'ui.card.border', borderRadius: 2, overflow: 'hidden',
+            alignSelf: { md: 'flex-start' },
+          }}>
+            <Stack direction="row" alignItems="center" sx={{ px: 1, py: 0.75, borderBottom: toolsOpen ? 1 : 0, borderColor: 'ui.card.divider' }}>
+              {toolsOpen && <Typography sx={{ flexGrow: 1, fontSize: 12, fontWeight: 800 }}>{t('cards.tools')}</Typography>}
+              <Tooltip title={toolsOpen ? t('cards.toolsHide') : t('cards.toolsShow')}>
+                <IconButton size="small" onClick={toggleTools} aria-expanded={toolsOpen} sx={{ width: 22, height: 22, fontSize: 13, color: 'ui.card.muted' }}>
+                  {toolsOpen ? '‹' : '☰'}
+                </IconButton>
+              </Tooltip>
+            </Stack>
+            {toolsOpen && (
+              <Stack sx={{ py: 0.5 }}>
+                <Typography sx={{ px: 1.25, pt: 0.5, pb: 0.25, fontSize: 10, fontWeight: 700, color: 'ui.card.muted' }}>{t('cards.indicators')}</Typography>
+                {INDICATORS.map(d => {
+                  const on = indicators.includes(d.id);
+                  return (
+                    <Box key={d.id} component="button" type="button" onClick={() => toggleIndicator(d.id)} aria-pressed={on}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 1, px: 1.25, py: 0.6, border: 0, bgcolor: on ? 'ui.chip.bg' : 'transparent',
+                        cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: on ? 700 : 500, color: 'ui.card.fg', textAlign: 'left',
+                        '&:hover': { bgcolor: 'ui.chip.hover' },
+                      }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: 0.5, border: 2, borderColor: d.color, bgcolor: on ? d.color : 'transparent', flexShrink: 0 }} />
+                      <Box component="span" sx={{ flexGrow: 1 }}>{d.label}</Box>
+                      {on && <Box component="span" sx={{ color: d.color, fontSize: 11 }}>✓</Box>}
+                    </Box>
+                  );
+                })}
+                {base && (
+                  <>
+                    <Typography sx={{ px: 1.25, pt: 1, pb: 0.5, fontSize: 10, fontWeight: 700, color: 'ui.card.muted' }}>{t('cards.indicatorOn')}</Typography>
+                    <Stack direction="row" gap={0.5} sx={{ px: 1.25, pb: 0.75 }}>
+                      {([['target', target.short], ['base', base.short]] as const).map(([v, label]) => (
+                        <Box key={v} component="button" type="button" onClick={() => pickSource(v)}
+                          sx={{ ...chip(source === v), width: 'auto', height: 22, borderRadius: 99, px: 1, border: 0, cursor: 'pointer', fontFamily: 'inherit', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {label}
+                        </Box>
+                      ))}
+                    </Stack>
+                  </>
+                )}
+              </Stack>
+            )}
+          </Box>
+        <Box onClick={onOpen} sx={{ flex: 1, minWidth: 0, position: 'relative', height, bgcolor: 'surface.chartBg', cursor: onOpen ? 'pointer' : undefined }}>
+          {error ? (
+            <Typography sx={{ color: 'ui.card.muted', fontSize: 11, p: 2 }}>No data</Typography>
+          ) : (
+            <HighchartsReact highcharts={Highcharts} options={options} />
+          )}
+          {loading && (
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'surface.empty', color: 'text.disabled', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>◆</Box>
+            </Box>
+          )}
+        </Box>
+        </Stack>
+      ) : (
       <Box onClick={onOpen} sx={{ mx: 2, mt: 1.5, position: 'relative', height, bgcolor: 'surface.chartBg', cursor: onOpen ? 'pointer' : undefined }}>
         {error ? (
           <Typography sx={{ color: 'ui.card.muted', fontSize: 11, p: 2 }}>No data</Typography>
@@ -180,6 +270,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
           </Box>
         )}
       </Box>
+      )}
       <Stack direction="row" alignItems="center" gap={0.5} sx={{ px: 2, py: 1.5 }}>
         {target.ranges.map(r => (
           <Box key={r} component="button" onClick={() => { setRange(r); setIntervalState(intervalsFor(target, r)[0]); }}
