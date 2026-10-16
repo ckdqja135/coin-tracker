@@ -13,6 +13,7 @@ const CoinPage: React.FC<{ coin: 'BTC' | 'ETH' }> = ({ coin }) => {
     <CardGridPage
       name={name}
       menuTitle={`${name} VS`}
+      icon={coin}
       base={base}
       items={items}
       storageKey={`vsFavorites:${coin}`}

@@ -7,6 +7,9 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'new.tip': 'Newly listed on {ex} ({date})',
+    'cards.favTip': 'Add to my charts', 'cards.embedTip': 'Copy embed link', 'cards.copied': 'Copied', 'cards.interval': 'Interval',
+    'cards.searchPh': 'Search indicators', 'cards.mine': '♥ My charts', 'cards.allRange': 'All charts', 'cards.count': '{n} charts', 'cards.compared': 'Compared',
+    'cards.normalized': 'Each line is scaled to its own low–high in the period', 'cards.noMatch': 'No results', 'cards.sidebar': 'Sidebar', 'cards.toggleGroup': 'Collapse / expand',
     'hero.placeholder': 'Search by coin name or symbol', 'hero.popular': 'Popular coins', 'hero.results': 'Results {n}', 'hero.noResults': 'No matching coins',
     'today.title': 'Today on Upbit', 'today.sub': 'KRW market · as of {time}', 'today.help': 'Upbit KRW market. Changes are since 09:00 KST. Caution and delisting notices from the last 7 days on Upbit and Bithumb. Tap a coin to add it.',
     'today.btc': 'BTC since 09:00', 'today.up': 'Rising', 'today.down': 'Falling', 'today.last7d': 'last 7 days', 'today.none': 'None', 'home.remove': 'Remove',
@@ -97,6 +100,9 @@ const dict = {
   },
   ko: {
     'new.tip': '{ex} 신규 상장 ({date})',
+    'cards.favTip': '내 차트에 추가', 'cards.embedTip': '임베드 링크 복사', 'cards.copied': '복사됨', 'cards.interval': '간격',
+    'cards.searchPh': '비교 지표 검색', 'cards.mine': '♥ 내 차트', 'cards.allRange': '전체 기간', 'cards.count': '{n}개 차트', 'cards.compared': '비교 지표',
+    'cards.normalized': '각 지표는 기간 내 최저~최고 기준으로 정규화되어 표시됩니다', 'cards.noMatch': '검색 결과가 없습니다', 'cards.sidebar': '사이드바', 'cards.toggleGroup': '접기/펼치기',
     'hero.placeholder': '코인 이름이나 심볼을 검색해 보세요', 'hero.popular': '인기 코인', 'hero.results': '검색 결과 {n}', 'hero.noResults': '일치하는 코인이 없습니다',
     'today.title': '오늘의 업비트', 'today.sub': 'KRW 마켓 · {time} 기준', 'today.help': '업비트 원화마켓, 09:00 KST 대비 등락률입니다. 유의 지정·거래지원 종료는 업비트·빗썸의 최근 7일 공지입니다. 코인을 누르면 추가됩니다.',
     'today.btc': 'BTC 09:00 이후', 'today.up': '상승 종목', 'today.down': '하락 종목', 'today.last7d': '최근 7일', 'today.none': '없음', 'home.remove': '삭제',

@@ -27,6 +27,13 @@ interface Props {
   /** 상세 화면: 큰 차트, 축 눈금, 범례, 기간 중 변화. onBack은 목록으로 돌아가기 */
   detail?: boolean;
   onBack?: () => void;
+  /** 카드 위쪽 작은 글씨 (분류 이름) */
+  category?: string;
+  /** 기간을 바깥에서 정할 때 (목록의 "전체 기간" 일괄 변경) */
+  range?: CardRange;
+  onRangeChange?: (r: CardRange) => void;
+  /** 임베드 링크를 방금 복사했으면 버튼에 "복사됨" */
+  copied?: boolean;
 }
 
 /** 값 표시: 큰 값은 천 단위, 작은 값은 소수 자릿수를 늘린다 */
@@ -74,13 +81,16 @@ const chip = (active: boolean) => ({
 });
 
 /** "A vs B" 비교 카드 */
-const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavorite, onEmbed, onOpen, detail, onBack }) => {
+const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavorite, onEmbed, onOpen, detail, onBack, category, range: rangeProp, onRangeChange, copied }) => {
   const theme = useTheme();
   const { t } = useI18n();
   const backLabel = t('cards.back');
   const dark = theme.palette.mode === 'dark';
-  const chartBg = theme.palette.surface.chartBg;
-  const [range, setRange] = useState<CardRange>(target.ranges[0]);
+  const [localRange, setLocalRange] = useState<CardRange>(target.ranges[0]);
+  // 바깥에서 정한 기간을 이 지표가 지원하지 않으면(느린 지표는 1D 없음) 지원하는 첫 기간으로
+  const wanted = rangeProp ?? localRange;
+  const range: CardRange = target.ranges.includes(wanted) ? wanted : target.ranges[0];
+  const setRange = (r: CardRange) => (onRangeChange ? onRangeChange(r) : setLocalRange(r));
   const intervals = intervalsFor(target, range);
   const [interval, setIntervalState] = useState<Interval>(intervals[0]);
   const iv = intervals.includes(interval) ? interval : intervals[0];
@@ -110,7 +120,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
   const toggleTools = () => setToolsOpen(v => { storage.set('detailToolsOpen', !v); return !v; });
   useEffect(() => { if (detail) window.dispatchEvent(new Event('resize')); }, [toolsOpen, detail]);
   const ind = detail ? indicatorSeries(indicators, source, source === 'base' ? 0 : 1, 2) : { series: [], panes: [] };
-  const height = detail ? 440 + ind.panes.length * PANE_PX : 160;
+  const height = detail ? 440 + ind.panes.length * PANE_PX : 150;
   // 지표 칸이 생기면 위쪽 가격 칸을 줄이고 그 아래에 칸을 하나씩 쌓는다 (%: 플롯 영역 기준)
   const mainPct = ind.panes.length ? Math.round((320 / (320 + ind.panes.length * PANE_PX)) * 100) : 100;
   const panePct = ind.panes.length ? (100 - mainPct) / ind.panes.length : 0;
@@ -120,7 +130,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     formatter(this: any) { return fmtValue(this.value as number, percent); },
   });
   const options = useMemo<Highcharts.Options>(() => ({
-    chart: { height, backgroundColor: chartBg, spacing: detail ? [10, 10, 10, 10] : [8, 4, 4, 4], animation: false, style: { fontFamily: 'inherit' } },
+    chart: { height, backgroundColor: 'transparent', spacing: detail ? [10, 10, 10, 10] : [8, 2, 4, 2], animation: false, style: { fontFamily: 'inherit' } },
     title: { text: undefined },
     credits: { enabled: false },
     legend: { enabled: detail, align: 'left', verticalAlign: 'top', itemStyle: { color: dark ? '#c9ced6' : '#333', fontSize: '12px' } },
@@ -129,7 +139,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
       // 느린 지표(난이도 등)도 선택한 기간만 보이도록 고정
       min: range === 'ALL' ? undefined : Date.now() - RANGE_MS[range],
       type: 'datetime', lineWidth: 0, tickLength: 4,
-      labels: { style: { color: dark ? '#9aa1ad' : '#555', fontSize: '9px' }, format: range === '1D' ? '{value:%d %Hh}' : range === '1Y' || range === 'ALL' ? '{value:%b.%Y}' : '{value:%b \'%d}' },
+      labels: { style: { color: dark ? '#828b98' : '#7f8794', fontSize: detail ? '10px' : '11px' }, format: range === '1D' ? '{value:%d %Hh}' : range === '1Y' || range === 'ALL' ? '{value:%b.%Y}' : '{value:%b \'%d}' },
     },
     // 상세 화면에서는 두 값의 눈금을 양쪽에 보여 준다 (기준: 왼쪽 회색, 비교 대상: 오른쪽 파랑)
     yAxis: detail ? [
@@ -143,7 +153,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
         ...(d.id === 'rsi' ? { min: 0, max: 100, tickPositions: [0, 30, 70, 100], plotLines: [30, 70].map(v => ({ value: v, color: dark ? '#4a4f59' : '#c4cad3', dashStyle: 'Dash' as const, width: 1 })) } : {}),
       })),
     ] : [
-      { visible: false, gridLineColor: dark ? '#2f333b' : '#eef0f4' },
+      { visible: false },
       { visible: false, opposite: true },
     ],
     tooltip: { shared: true, xDateFormat: '%Y-%m-%d %H:%M', valueDecimals: 2, outside: true, ...(detail ? { crosshairs: true } : {}) },
@@ -154,29 +164,55 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
       ...ind.series,
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [data, base, target.short, target.unit, range, chartBg, dark, detail, indicators.join(','), source]);
+  }), [data, base, target.short, target.unit, range, dark, detail, indicators.join(','), source]);
 
   return (
     <Box sx={{
-      bgcolor: 'ui.card.bg', borderRadius: `${theme.palette.ui.card.radius}px`, color: 'ui.card.fg', overflow: 'hidden',
-      border: 1, borderColor: 'ui.card.border', boxShadow: dark ? 'none' : '0 1px 3px rgba(0,27,55,0.06)',
+      bgcolor: 'background.paper', borderRadius: '16px', color: 'text.primary', overflow: 'hidden',
+      border: 1, borderColor: 'divider', transition: 'border-color .15s', '&:hover': { borderColor: dark ? '#39404c' : '#cdd3dc' },
     }}>
-      <Stack direction="row" alignItems="center" gap={1} sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'ui.card.divider', minHeight: 56 }}>
+      <Stack direction="row" alignItems="flex-start" gap={1} sx={{ px: 2.5, pt: 2.25 }}>
         {detail && onBack && (
           <Tooltip title={backLabel}>
             <IconButton size="small" onClick={onBack} aria-label={backLabel}
-              sx={{ width: 28, height: 28, border: 1, borderColor: 'ui.card.iconBorder', color: 'ui.card.fg', fontSize: 14 }}>←</IconButton>
+              sx={{ width: 32, height: 32, border: 1, borderColor: 'divider', borderRadius: 2, color: 'text.primary', fontSize: 14 }}>←</IconButton>
           </Tooltip>
         )}
-        <Typography onClick={onOpen} sx={{ flexGrow: 1, fontSize: detail ? 16 : 12, fontWeight: 700, lineHeight: 1.3, cursor: onOpen ? 'pointer' : undefined, '&:hover': onOpen ? { color: TARGET_COLOR } : undefined }}>{title}</Typography>
-        <Tooltip title="My chart">
-          <IconButton size="small" onClick={onToggleFavorite}
-            sx={{ width: 28, height: 28, border: 1, borderColor: 'ui.card.iconBorder', color: favorite ? '#ef5350' : 'ui.card.muted', fontSize: 13 }}>♥</IconButton>
+        <Stack sx={{ flex: 1, minWidth: 0, gap: 0.375 }}>
+          {category && <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>{category}</Typography>}
+          <Typography onClick={onOpen} sx={{
+            fontSize: detail ? 18 : 16, fontWeight: 800, lineHeight: 1.3, cursor: onOpen ? 'pointer' : undefined,
+            '&:hover': onOpen ? { color: TARGET_COLOR } : undefined,
+          }}>{title}</Typography>
+        </Stack>
+        <Tooltip title={t('cards.favTip')}>
+          <Box component="button" type="button" onClick={onToggleFavorite} aria-pressed={favorite} sx={{
+            width: 32, height: 32, border: 1, borderColor: 'divider', borderRadius: 2, cursor: 'pointer', fontSize: 13, flexShrink: 0,
+            bgcolor: favorite ? 'rgba(239,83,80,0.10)' : 'background.paper', color: favorite ? '#ef5350' : 'text.secondary',
+          }}>♥</Box>
         </Tooltip>
-        <Tooltip title="Embed">
-          <IconButton size="small" onClick={onEmbed} sx={{ width: 28, height: 28, border: 1, borderColor: 'ui.card.iconBorder', color: 'ui.card.muted', fontSize: 11 }}>{'</>'}</IconButton>
+        <Tooltip title={t('cards.embedTip')}>
+          <Box component="button" type="button" onClick={onEmbed} sx={{
+            height: 32, minWidth: 32, px: 1, border: 1, borderColor: 'divider', borderRadius: 2, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+            fontFamily: 'inherit', bgcolor: 'background.paper', color: copied ? TARGET_COLOR : 'text.secondary', flexShrink: 0,
+          }}>{copied ? t('cards.copied') : '</>'}</Box>
         </Tooltip>
       </Stack>
+      {!detail && (
+        // 기간 중 변화: 기준(BTC)과 비교 지표
+        <Stack direction="row" gap={2} sx={{ px: 2.5, pt: 1.5, fontSize: 13, minWidth: 0 }}>
+          {[...(base ? [{ item: base, pts: data?.b ?? [], color: baseColor }] : []), { item: target, pts: data?.tg ?? [], color: TARGET_COLOR }].map(({ item, pts, color }) => {
+            const ch = changeOf(pts, item.unit === 'percent');
+            return (
+              <Stack key={item.id} direction="row" alignItems="center" gap={0.75} sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+                <Typography noWrap sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>{item.short}</Typography>
+                <Typography sx={{ fontSize: 13, fontWeight: 800, flexShrink: 0, color: ch == null ? 'text.secondary' : ch.startsWith('-') ? '#ef5350' : '#26a69a' }}>{ch ?? '-'}</Typography>
+              </Stack>
+            );
+          })}
+        </Stack>
+      )}
       {detail && data && (
         // 상세 화면: 기간 중 마지막 값과 변화
         <Stack direction="row" flexWrap="wrap" columnGap={3} rowGap={1} sx={{ px: 2, pt: 1.5 }}>
@@ -258,7 +294,12 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
         </Box>
         </Stack>
       ) : (
-      <Box onClick={onOpen} sx={{ mx: 2, mt: 1.5, position: 'relative', height, bgcolor: 'surface.chartBg', cursor: onOpen ? 'pointer' : undefined }}>
+      <Box onClick={onOpen} sx={{
+        mx: 2.5, mt: 1.5, position: 'relative', height, cursor: onOpen ? 'pointer' : undefined,
+        borderTop: 1, borderBottom: 1, borderColor: 'ui.card.divider',
+        // 가운데 점선 (디자인 기준선)
+        '&::before': { content: '""', position: 'absolute', left: 0, right: 0, top: '50%', borderTop: 1, borderColor: 'ui.card.divider', borderTopStyle: 'dashed', pointerEvents: 'none' },
+      }}>
         {error ? (
           <Typography sx={{ color: 'ui.card.muted', fontSize: 11, p: 2 }}>No data</Typography>
         ) : (
@@ -271,16 +312,22 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
         )}
       </Box>
       )}
-      <Stack direction="row" alignItems="center" gap={0.5} sx={{ px: 2, py: 1.5 }}>
-        {target.ranges.map(r => (
-          <Box key={r} component="button" onClick={() => { setRange(r); setIntervalState(intervalsFor(target, r)[0]); }}
-            sx={{ ...chip(r === range), border: 0, cursor: 'pointer', fontFamily: 'inherit' }}>{r}</Box>
-        ))}
+      <Stack direction="row" alignItems="center" gap={1} sx={{ px: 2.5, pt: 1.5, pb: 2 }}>
+        {/* 기간 탭: 회색 바탕에 고른 것만 흰 버튼 */}
+        <Stack direction="row" gap={0.25} sx={{ p: '3px', borderRadius: '9px', bgcolor: 'ui.pill.bg' }}>
+          {target.ranges.map(r => (
+            <Box key={r} component="button" type="button" onClick={() => setRange(r)} aria-pressed={r === range} sx={{
+              height: 28, minWidth: 36, border: 0, borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+              bgcolor: r === range ? 'background.paper' : 'transparent', color: r === range ? 'text.primary' : 'text.secondary',
+              boxShadow: r === range ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+            }}>{r}</Box>
+          ))}
+        </Stack>
         <Box sx={{ flexGrow: 1 }} />
-        <Typography sx={{ fontSize: 10, color: 'ui.card.muted', mr: 0.5 }}>interval</Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{t('cards.interval')}</Typography>
         <Select size="small" value={iv} onChange={e => setIntervalState(e.target.value as Interval)} variant="outlined"
-          sx={{ height: 24, fontSize: 10, color: 'ui.card.fg', '& fieldset': { borderColor: 'ui.card.iconBorder' }, '& .MuiSvgIcon-root': { color: 'ui.card.fg', fontSize: 14 } }}>
-          {intervals.map(i => <MenuItem key={i} value={i} sx={{ fontSize: 12 }}>{i === '1d' ? '1D' : i === '1w' ? '1W' : i}</MenuItem>)}
+          sx={{ height: 32, fontSize: 13, fontWeight: 700, borderRadius: 2, color: 'text.primary', '& fieldset': { borderColor: 'divider' }, '& .MuiSelect-select': { py: 0, pl: 1 } }}>
+          {intervals.map(i => <MenuItem key={i} value={i} sx={{ fontSize: 13 }}>{i === '1d' ? '1D' : i === '1w' ? '1W' : i}</MenuItem>)}
         </Select>
       </Stack>
     </Box>
