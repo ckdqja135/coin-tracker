@@ -7,6 +7,7 @@ const dict = {
   en: {
     'home.cimRef': 'base',
     'new.tip': 'Newly listed on {ex} ({date})',
+    'markets.search': 'Search assets', 'markets.empty': 'Press ♥ on a card to add assets you watch often to My charts.',
     'cards.favTip': 'Add to my charts', 'cards.embedTip': 'Copy embed link', 'cards.copied': 'Copied', 'cards.interval': 'Interval',
     'cards.searchPh': 'Search indicators', 'cards.mine': '♥ My charts', 'cards.allRange': 'All charts', 'cards.count': '{n} charts', 'cards.compared': 'Compared',
     'cards.normalized': 'Each line is scaled to its own low–high in the period', 'cards.noMatch': 'No results', 'cards.sidebar': 'Sidebar', 'cards.toggleGroup': 'Collapse / expand',
@@ -100,6 +101,7 @@ const dict = {
   },
   ko: {
     'new.tip': '{ex} 신규 상장 ({date})',
+    'markets.search': '종목 검색', 'markets.empty': '카드의 ♥ 버튼으로 자주 보는 종목을 내 차트에 추가하세요',
     'cards.favTip': '내 차트에 추가', 'cards.embedTip': '임베드 링크 복사', 'cards.copied': '복사됨', 'cards.interval': '간격',
     'cards.searchPh': '비교 지표 검색', 'cards.mine': '♥ 내 차트', 'cards.allRange': '전체 기간', 'cards.count': '{n}개 차트', 'cards.compared': '비교 지표',
     'cards.normalized': '각 지표는 기간 내 최저~최고 기준으로 정규화되어 표시됩니다', 'cards.noMatch': '검색 결과가 없습니다', 'cards.sidebar': '사이드바', 'cards.toggleGroup': '접기/펼치기',

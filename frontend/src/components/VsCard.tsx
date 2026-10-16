@@ -58,7 +58,7 @@ const changeOf = (pts: Point[], percent: boolean): string | null => {
 };
 
 /** 마지막 점은 크게, extremes면 기간 중 최고점·최저점에도 작은 점을 찍는다 */
-const markPoints = (pts: Point[], extremes: boolean) => {
+const markPoints = (pts: Point[], extremes: boolean, halo?: string) => {
   let hi = -1;
   let lo = -1;
   if (extremes && pts.length > 2) {
@@ -68,7 +68,8 @@ const markPoints = (pts: Point[], extremes: boolean) => {
     });
   }
   return pts.map((p, i) => {
-    if (i === pts.length - 1) return { x: p.t, y: p.v, marker: { enabled: true, radius: 4 } };
+    // 마지막 점: halo가 있으면 옅은 테두리를 둘러 강조한다 (단일 차트 카드)
+    if (i === pts.length - 1) return { x: p.t, y: p.v, marker: { enabled: true, radius: halo ? 4.5 : 4, ...(halo ? { lineWidth: 3, lineColor: halo } : {}) } };
     if (i === hi || i === lo) return { x: p.t, y: p.v, marker: { enabled: true, radius: 2.5 } };
     return [p.t, p.v];
   });
@@ -160,7 +161,7 @@ const VsCard: React.FC<Props> = ({ title, base, target, favorite, onToggleFavori
     plotOptions: { series: { turboThreshold: 0, animation: false, lineWidth: 1.2, marker: { enabled: false }, states: { hover: { lineWidthPlus: 0 } } } },
     series: [
       ...(base ? [{ type: 'line' as const, id: 'base', name: base.short, color: baseColor, yAxis: 0, data: markPoints(data?.b ?? [], false) }] : []),
-      { type: 'line' as const, id: 'target', name: target.short, color: TARGET_COLOR, yAxis: base || detail ? 1 : 0, data: markPoints(data?.tg ?? [], true) },
+      { type: 'line' as const, id: 'target', name: target.short, color: TARGET_COLOR, yAxis: base || detail ? 1 : 0, data: markPoints(data?.tg ?? [], true, base ? undefined : theme.palette.ui.highlight.bg) },
       ...ind.series,
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

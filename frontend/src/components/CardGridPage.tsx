@@ -27,6 +27,10 @@ interface Props {
   /** 즐겨찾기 저장 키 */
   storageKey: string;
   titleFor: (item: CatalogItem) => string;
+  /** 사이드바 검색창 문구 (기본: 비교 지표 검색) */
+  searchPlaceholder?: string;
+  /** 내 차트가 비었을 때 문구 */
+  emptyText?: string;
 }
 
 /** 회색 바탕에 고른 것만 흰 버튼인 기간 탭 */
@@ -44,7 +48,7 @@ const Segmented: React.FC<{ value: CardRange | null; onChange: (r: CardRange) =>
 );
 
 /** BTC / ETH / 마켓 페이지 공통: 사이드바(검색·전체·내 차트·분류) + 비교 카드 그리드 + 상세 화면 */
-const CardGridPage: React.FC<Props> = ({ name, menuTitle, icon, base, items, storageKey, titleFor }) => {
+const CardGridPage: React.FC<Props> = ({ name, menuTitle, icon, base, items, storageKey, titleFor, searchPlaceholder, emptyText }) => {
   const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   // 보기: ?item= 상세, ?cat= 분류, ?mine=1 내 차트, 없으면 전체
@@ -137,7 +141,7 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, icon, base, items, sto
           <circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" strokeWidth="2.2" />
           <line x1="13" y1="13" x2="18" y2="18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
         </Box>
-        <Box component="input" ref={searchRef} value={query} placeholder={t('cards.searchPh')} aria-label={t('cards.searchPh')}
+        <Box component="input" ref={searchRef} value={query} placeholder={searchPlaceholder ?? t('cards.searchPh')} aria-label={searchPlaceholder ?? t('cards.searchPh')}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
           onFocus={() => setSearchFocus(true)} onBlur={() => setSearchFocus(false)}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Escape') { setQuery(''); e.currentTarget.blur(); } }}
@@ -250,7 +254,7 @@ const CardGridPage: React.FC<Props> = ({ name, menuTitle, icon, base, items, sto
 
         {detailItem ? card(detailItem, true) : list.length === 0 ? (
           <Box sx={{ py: 10, textAlign: 'center', fontSize: 15, color: 'text.secondary', bgcolor: 'background.paper', border: 1, borderStyle: 'dashed', borderColor: 'divider', borderRadius: '16px' }}>
-            {mine && !q ? t('cards.empty') : t('cards.noMatch')}
+            {mine && !q ? (emptyText ?? t('cards.empty')) : t('cards.noMatch')}
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(320px, 1fr))' }, gap: 2 }}>

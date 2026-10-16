@@ -14,6 +14,8 @@ const Markets: React.FC = () => {
       items={items}
       storageKey="marketFavorites"
       titleFor={item => item.label}
+      searchPlaceholder={t('markets.search')}
+      emptyText={t('markets.empty')}
     />
   );
 };
