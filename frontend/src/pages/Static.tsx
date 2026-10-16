@@ -1,11 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useLocation, useParams } from 'react-router-dom';
 import { Box, Button, InputBase, Link, Stack, Typography } from '@mui/material';
+import { LogoMark } from '../components/Logo';
 import { PageHeader } from '../components/Panel';
 import { useI18n, Lang, TKey } from '../i18n';
 
 type Category = 'crypto' | 'commodity' | 'international';
 const CATEGORIES: Category[] = ['crypto', 'commodity', 'international'];
+
+/** 글 상세에서 쓰는 블록: 문단, 비교 카드 2칸(상승/하락), 인용문 */
+type Block =
+  | { type: 'p'; text: string }
+  | { type: 'pairs'; items: { tags: string[]; text: string; tone: 'up' | 'down' }[] }
+  | { type: 'quote'; text: string };
 
 interface Post {
   slug: string;
@@ -13,7 +20,10 @@ interface Post {
   tag: string;
   category: Category;
   title: Record<Lang, string>;
+  /** 목록 미리보기·검색에 쓰는 문단 */
   body: Record<Lang, string[]>;
+  /** 상세 화면 본문 (없으면 body를 문단으로 그린다). 첫 문단은 크게 보여준다 */
+  blocks?: Record<Lang, Block[]>;
 }
 
 // 사이트 지표 해설용 자체 작성 글
@@ -34,6 +44,28 @@ const POSTS: Post[] = [
         '미결제약정(OI)은 아직 청산되지 않은 선물 계약의 총 규모입니다. 새 포지션이 열리면 늘고, 포지션이 정리되거나 청산되면 줄어듭니다.',
         '가격과 OI가 함께 오르면 새로운 레버리지가 유입되고 있다는 뜻인 경우가 많습니다. 가격과 OI가 함께 내리면 포지션 정리나 청산이 진행 중일 가능성이 큽니다.',
         '긴 캔들과 함께 OI가 급감하면 연쇄 청산의 전형적인 신호입니다. 홈의 임펄스 모니터에서 두 지표를 겹쳐 볼 수 있습니다.',
+      ],
+    },
+    blocks: {
+      en: [
+        { type: 'p', text: 'Open interest (OI) is the total value of futures contracts that are still open. It rises when new positions are opened and falls when positions are closed or liquidated.' },
+        { type: 'p', text: 'Price up with OI up usually means new leverage is entering the market. Price down with OI down often means positions are being closed or liquidated.' },
+        { type: 'pairs', items: [
+          { tags: ['Price ↑', 'OI ↑'], text: 'New leverage coming in', tone: 'up' },
+          { tags: ['Price ↓', 'OI ↓'], text: 'Positions closing · liquidations', tone: 'down' },
+        ] },
+        { type: 'quote', text: 'A sharp OI drop together with a long candle is a typical sign of a liquidation cascade.' },
+        { type: 'p', text: 'Use the Impulse Monitor on the home page to overlay the two.' },
+      ],
+      ko: [
+        { type: 'p', text: '미결제약정(OI)은 아직 청산되지 않은 선물 계약의 총 규모입니다. 새 포지션이 열리면 늘고, 포지션이 정리되거나 청산되면 줄어듭니다.' },
+        { type: 'p', text: '가격과 OI가 함께 오르면 새로운 레버리지가 유입되고 있다는 뜻인 경우가 많습니다. 가격과 OI가 함께 내리면 포지션 정리나 청산이 진행 중일 가능성이 큽니다.' },
+        { type: 'pairs', items: [
+          { tags: ['가격 ↑', 'OI ↑'], text: '새로운 레버리지 유입', tone: 'up' },
+          { tags: ['가격 ↓', 'OI ↓'], text: '포지션 정리 · 청산 진행', tone: 'down' },
+        ] },
+        { type: 'quote', text: '긴 캔들과 함께 OI가 급감하면 연쇄 청산의 전형적인 신호입니다.' },
+        { type: 'p', text: '홈의 임펄스 모니터에서 두 지표를 겹쳐 볼 수 있습니다.' },
       ],
     },
   },
@@ -190,18 +222,168 @@ export const Blog: React.FC = () => {
   );
 };
 
+/** 글마다 본문 끝에 붙는 관련 화면 바로가기 */
+const POST_LINKS: Record<string, { to: string; key: string }> = {
+  'open-interest': { to: '/compare', key: 'oi' },
+  'kimchi-premium': { to: '/#monitor', key: 'kimp' },
+  'long-short-ratio': { to: '/longs-shorts', key: 'ls' },
+  'gold-and-bitcoin': { to: '/correlation', key: 'gold' },
+  'dollar-index': { to: '/compare', key: 'dxy' },
+};
+
+/** 읽는 시간(분): 한국어 약 500자, 영어 약 200단어에 1분 */
+const readMinutes = (texts: string[], lang: Lang) => {
+  const all = texts.join(' ');
+  return Math.max(1, Math.round(lang === 'ko' ? all.replace(/\s/g, '').length / 500 : all.split(/\s+/).length / 200));
+};
+
+const UP_C = '#0c8f60';
+const DOWN_C = '#d63c42';
+
 export const BlogPost: React.FC = () => {
   const { slug } = useParams();
   const { t, lang } = useI18n();
   const post = POSTS.find(p => p.slug === slug);
+  const [progress, setProgress] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  // 읽은 만큼 위쪽 막대를 채운다
+  useEffect(() => {
+    const onScroll = () => {
+      const d = document.documentElement;
+      const max = d.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer.current); };
+  }, [slug]);
+
   if (!post) return <PageHeader title="404" />;
+  const blocks: Block[] = post.blocks?.[lang] ?? post.body[lang].map(text => ({ type: 'p' as const, text }));
+  const minutes = readMinutes(post.body[lang], lang);
+  const link = POST_LINKS[post.slug];
+
+  const share = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); } catch { /* 클립보드 권한 없음 */ }
+    setCopied(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 2000);
+  };
+  const pillBtn = {
+    height: 38, px: 2, borderRadius: 99, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  } as const;
+  let firstP = true;
+
   return (
-    <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-      <Link component={RouterLink} to="/blog" underline="hover" color="text.secondary">← {t('blog.title')}</Link>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>{post.date} · {post.tag}</Typography>
-      <PageHeader title={post.title[lang]} />
-      {post.body[lang].map((para, i) => <Typography key={i} sx={{ mb: 2, lineHeight: 1.8 }}>{para}</Typography>)}
-    </Box>
+    <>
+      {/* 읽기 진행 막대 (헤더 바로 아래) */}
+      <Box sx={{ position: 'sticky', top: 92, zIndex: 19, height: 3, width: '100vw', ml: 'calc(50% - 50vw)', mt: { xs: -2, sm: -3 } }}>
+        <Box sx={{ height: 3, width: `${(progress * 100).toFixed(1)}%`, bgcolor: 'primary.main', borderRadius: '0 2px 2px 0', transition: 'width .1s' }} />
+      </Box>
+      <Stack sx={{ maxWidth: 760, mx: 'auto', px: { sm: 2 }, pt: { xs: 3, md: 6 }, pb: 8 }}>
+        <Box component={RouterLink} to="/blog" sx={{
+          alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 1, height: 34, pl: 1.25, pr: 1.75, borderRadius: 99,
+          bgcolor: 'ui.pill.bg', color: 'text.secondary', fontSize: 14, fontWeight: 600, textDecoration: 'none', '&:hover': { color: 'text.primary' },
+        }}>← {t('blog.title')}</Box>
+
+        <Stack gap={2.5} sx={{ mt: 5, pb: 4, borderBottom: 1, borderColor: 'divider' }}>
+          <Stack direction="row" alignItems="center" gap={1.25}>
+            <Box component="span" sx={{ height: 28, px: 1.5, borderRadius: 99, bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontSize: 13, fontWeight: 800, letterSpacing: '0.3px', display: 'flex', alignItems: 'center' }}>{post.tag}</Box>
+            <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'text.secondary' }}>{post.date}</Typography>
+          </Stack>
+          <Typography component="h1" sx={{ m: 0, fontSize: { xs: 32, md: 48 }, lineHeight: 1.2, fontWeight: 800, letterSpacing: { xs: '-1px', md: '-1.6px' }, textWrap: 'balance' }}>
+            {post.title[lang]}
+          </Typography>
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <LogoMark size={36} />
+            <Stack gap="2px">
+              <Typography sx={{ fontSize: 14, fontWeight: 700 }}>CoinTracker</Typography>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('blog.readTime', { n: String(minutes) })}</Typography>
+            </Stack>
+            <Box sx={{ flex: 1 }} />
+            <Box component="button" type="button" onClick={share} sx={{
+              ...pillBtn, border: 1, borderColor: 'divider', bgcolor: 'background.paper', color: 'text.primary', '&:hover': { bgcolor: 'ui.pill.bg' },
+            }}>{copied ? `✓ ${t('blog.copied')}` : t('blog.copyLink')}</Box>
+          </Stack>
+        </Stack>
+
+        <Stack component="article" gap={3.5} sx={{ pt: 5 }}>
+          {blocks.map((b, i) => {
+            if (b.type === 'p') {
+              // 첫 문단은 크게
+              const lead = firstP;
+              firstP = false;
+              return (
+                <Typography key={i} sx={lead
+                  ? { fontSize: { xs: 19, md: 21 }, lineHeight: 1.75, fontWeight: 500, letterSpacing: '-0.2px', color: 'text.primary', textWrap: 'pretty' }
+                  : { fontSize: { xs: 17, md: 18 }, lineHeight: 1.85, color: 'text.secondary', textWrap: 'pretty' }}>
+                  {b.text}
+                </Typography>
+              );
+            }
+            if (b.type === 'quote') {
+              return (
+                <Box key={i} component="blockquote" sx={{
+                  m: 0, mt: 1, py: 0.5, pl: 3, borderLeft: '3px solid', borderColor: 'primary.main',
+                  fontSize: { xs: 19, md: 22 }, lineHeight: 1.6, fontWeight: 700, letterSpacing: '-0.4px', color: 'text.primary', textWrap: 'pretty',
+                }}>{b.text}</Box>
+              );
+            }
+            return (
+              <Box key={i} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
+                {b.items.map((it, j) => {
+                  const c = it.tone === 'up' ? UP_C : DOWN_C;
+                  return (
+                    <Stack key={j} gap={1.75} sx={{ px: 2.75, py: 2.5, borderRadius: '16px', bgcolor: `${c}17` }}>
+                      <Stack direction="row" gap={1}>
+                        {it.tags.map(tag => (
+                          <Box key={tag} component="span" sx={{ height: 30, px: 1.5, borderRadius: 2, bgcolor: 'background.paper', color: c, fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center' }}>{tag}</Box>
+                        ))}
+                      </Stack>
+                      <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.45 }}>{it.text}</Typography>
+                    </Stack>
+                  );
+                })}
+              </Box>
+            );
+          })}
+
+          {/* 관련 화면 바로가기 */}
+          {link && (
+            <Box component={RouterLink} to={link.to} sx={{
+              display: 'flex', alignItems: 'center', gap: 2.25, mt: 1.5, px: 3, py: 2.75, borderRadius: '18px', border: 1, borderColor: 'divider',
+              bgcolor: 'ui.pill.bg', color: 'text.primary', textDecoration: 'none', transition: 'border-color .15s', '&:hover': { borderColor: 'primary.main' },
+            }}>
+              <Box sx={{ width: 48, height: 48, flexShrink: 0, borderRadius: '14px', bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden><polyline points="3,16 9,10 13,13 21,5" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </Box>
+              <Stack sx={{ flex: 1, gap: 0.5, minWidth: 0 }}>
+                <Typography sx={{ fontSize: 16.5, fontWeight: 800 }}>{t(`blog.link.${link.key}` as TKey)}</Typography>
+                <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>{t(`blog.link.${link.key}.desc` as TKey)}</Typography>
+              </Stack>
+              <Typography sx={{ fontSize: 20, fontWeight: 700, color: 'primary.main' }}>→</Typography>
+            </Box>
+          )}
+        </Stack>
+
+        <Stack direction="row" alignItems="center" gap={1.5} sx={{ mt: 7, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+          <Box component={RouterLink} to="/blog" sx={{ fontSize: 15, fontWeight: 700, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'text.primary' } }}>← {t('blog.backToList')}</Box>
+          <Box sx={{ flex: 1 }} />
+          <Box component="button" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} sx={{ ...pillBtn, border: 0, bgcolor: 'ui.pill.bg', color: 'text.secondary' }}>
+            ↑ {t('blog.toTop')}
+          </Box>
+        </Stack>
+      </Stack>
+
+      {copied && (
+        <Box role="status" sx={{
+          position: 'fixed', left: '50%', bottom: 36, transform: 'translateX(-50%)', zIndex: 1300, height: 46, px: 2.5, borderRadius: 99,
+          bgcolor: 'rgba(18,21,26,0.92)', color: '#fff', fontSize: 14.5, fontWeight: 600, display: 'flex', alignItems: 'center',
+        }}>{t('blog.linkCopied')}</Box>
+      )}
+    </>
   );
 };
 
