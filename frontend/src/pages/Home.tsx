@@ -261,7 +261,6 @@ const Home: React.FC = () => {
       window.scrollTo(0, 0);
     }
   }, [location.key, location.hash]);
-  const chartRef = useRef<HTMLDivElement>(null);
   const base = exchangeMeta(baseId);
 
   useEffect(() => storage.set('cimExchange', baseId), [baseId]);
@@ -275,24 +274,18 @@ const Home: React.FC = () => {
   const chartCoin = coins.includes(active) ? active : coins[0];
   const listedOn = (coin: string) => EXCHANGES.filter(e => tickers[e.id]?.data[coin]).map(e => e.id);
 
-  // 펼친 직후에는 차트·지수 영역이 그려지며 높이가 바뀌므로, 잠시 기다린 뒤 위치를 계산해 스크롤한다
-  const [scrollTick, setScrollTick] = useState(0);
+  // 새로고침 시 브라우저가 이전 스크롤 위치를 되살리지 않게, 홈에서는 스크롤을 직접 관리한다
   useEffect(() => {
-    if (!scrollTick) return;
-    const id = setTimeout(() => {
-      const el = chartRef.current;
-      if (!el) return;
-      // 고정 헤더(메뉴 + 티커 바) 높이만큼 띄운다.
-      // 부드러운 스크롤은 탭이 화면에 안 보일 때 등 실행되지 않는 경우가 있어 즉시 이동한다
-      window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 110);
-    }, 150);
-    return () => clearTimeout(id);
-  }, [scrollTick]);
+    const prev = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => { window.history.scrollRestoration = prev; };
+  }, []);
 
   const open = () => {
     setOpened(true);
     window.history.replaceState(null, '', '#monitor');
-    setScrollTick(n => n + 1);
+    // 모니터는 첫 화면을 대신하므로 맨 위(차트 영역)부터 보여 준다
+    window.scrollTo(0, 0);
   };
 
   const pick = (coin: string) => {
@@ -311,37 +304,46 @@ const Home: React.FC = () => {
     bgcolor: active ? 'primary.main' : 'ui.pill.bg', color: active ? '#fff' : 'ui.pill.fg', '&:hover': { bgcolor: active ? 'primary.dark' : 'ui.pill.hover' },
   });
 
+  // 선택 코인 칩 (첫 화면 검색창 아래, 모니터에서는 거래소 비교 위)
+  const chips = (
+    <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1}>
+      {coins.length > 1 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
+      {coins.map(c => (
+        <Chip key={c} label={c} onClick={() => { setActive(c); open(); }}
+          onDelete={c === PINNED_COIN ? undefined : () => remove(c)}
+          sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
+      ))}
+      {coins.length > 0 && (
+        <Button size="small" onClick={() => { setResetKey(k => k + 1); open(); }} sx={{ color: 'text.secondary', fontWeight: 600 }}>
+          {t('home.reload')} ⟳
+        </Button>
+      )}
+    </Stack>
+  );
+
+  // 모니터를 열면 첫 화면(로고·검색·시장 요약)은 그리지 않고 차트 영역이 맨 위에 온다. 로고를 누르면 첫 화면으로 돌아간다
+  const monitor = opened && coins.length > 0 && !!chartCoin;
+
   return (
     <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
       {/* 검색 히어로 */}
-      <Stack alignItems="center" justifyContent="center"
-        sx={{ py: { xs: 5, md: 10 }, minHeight: opened && coins.length ? undefined : 'calc(100vh - 260px)' }}>
-        <Stack direction="row" alignItems="center" gap={{ xs: 1.5, md: 2 }} sx={{ mb: 5 }}>
-          <Box sx={{ filter: 'drop-shadow(0 10px 24px rgba(47,110,240,.28))', '& svg': { width: { xs: 44, md: 56 }, height: { xs: 44, md: 56 } } }}><LogoMark size={56} /></Box>
-          <Box component="h1" sx={{ m: 0, color: 'text.primary' }}><Wordmark fontSize={{ xs: 34, md: 44 }} /></Box>
+      {!monitor && (
+        <Stack alignItems="center" justifyContent="center" sx={{ py: { xs: 5, md: 10 }, minHeight: 'calc(100vh - 260px)' }}>
+          <Stack direction="row" alignItems="center" gap={{ xs: 1.5, md: 2 }} sx={{ mb: 5 }}>
+            <Box sx={{ filter: 'drop-shadow(0 10px 24px rgba(47,110,240,.28))', '& svg': { width: { xs: 44, md: 56 }, height: { xs: 44, md: 56 } } }}><LogoMark size={56} /></Box>
+            <Box component="h1" sx={{ m: 0, color: 'text.primary' }}><Wordmark fontSize={{ xs: 34, md: 44 }} /></Box>
+          </Stack>
+          <Box sx={{ width: '100%', maxWidth: 560 }}>
+            <CoinSearch onSelect={pick} size="large" />
+          </Box>
+          <Box sx={{ mt: 2 }}>{chips}</Box>
+          <MarketSummary onPick={pick} />
         </Stack>
-        <Box sx={{ width: '100%', maxWidth: 560 }}>
-          <CoinSearch onSelect={pick} size="large" />
-        </Box>
-        <Stack direction="row" flexWrap="wrap" justifyContent="center" gap={1} sx={{ mt: 2 }}>
-          {coins.length > 1 && <Chip label={t('home.clearAll')} onClick={clearAll} sx={{ bgcolor: 'ui.pill.bg', color: DOWN, fontWeight: 700 }} />}
-          {coins.map(c => (
-            <Chip key={c} label={c} onClick={() => { setActive(c); open(); }}
-              onDelete={c === PINNED_COIN ? undefined : () => remove(c)}
-              sx={{ bgcolor: 'ui.highlight.bg', color: 'ui.highlight.fg', fontWeight: 700, '& .MuiChip-deleteIcon': { color: 'text.disabled' } }} />
-          ))}
-          {coins.length > 0 && (
-            <Button size="small" onClick={() => { setResetKey(k => k + 1); open(); }} sx={{ color: 'text.secondary', fontWeight: 600 }}>
-              {t('home.reload')} ⟳
-            </Button>
-          )}
-        </Stack>
-        <MarketSummary onPick={pick} />
-      </Stack>
+      )}
 
-      {opened && coins.length > 0 && chartCoin && (
+      {monitor && (
         <>
-          <Box ref={chartRef} sx={{ scrollMarginTop: 120 }}>
+          <Box sx={{ pt: 2 }}>
             <MarketChart coin={chartCoin} listed={listedOn(chartCoin)} />
           </Box>
 
@@ -374,6 +376,7 @@ const Home: React.FC = () => {
               </Button>
             </Tooltip>
           </Stack>
+          <Box sx={{ mb: 2 }}>{chips}</Box>
           <CompareTable coins={coins} base={base} mode={mode} currency={currency} tickers={tickers} images={images} />
 
           {/* CIM */}
